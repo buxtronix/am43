@@ -121,7 +121,7 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
   pay[length] = '\0';
   String payload = String((char *)pay);
   String topic = String(top);
-  Serial.printf("MQTT [%s]%d: %s\r\n", top, length, payload);
+  Serial.printf("MQTT [%s]%d: %s\r\n", top, length, payload.c_str());
 
   int i1, i2, i3;
   i1 = topic.indexOf('/');

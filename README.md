@@ -1,10 +1,12 @@
 # AM43  blind controller for ESP32
 
 A proxy that allows you to control AM43 style blind controllers via MQTT,
-using an ESP32 device.
+using an ESP32 device's built-in Bluetooth radio.
 
-These blind and shade controllers are sold under various names, including
-Zemismart, A-OK and use the "Blind Engine" app.
+These blind and rollershade controllers are sold under various names, including
+Zemismart, A-OK and all use the "Blind Engine" app.
+
+Feel free to send PRs.
 
 ## Overview
  
@@ -13,16 +15,16 @@ MQTT topics to control and get status from them.
 
 The following MQTT topis are published to:
 
-- am43/<device>/available - Either 'offline' or 'online'
-- am43/<device>/position  - The current blind position, between 0 and 100
-- am43/<device>/battery   - The current battery level, between 0 and 100
-- am43/<device>rssi       - The current RSSI reported by the device.
+- am43/&lt;device>/available - Either 'offline' or 'online'
+- am43/&lt;device>/position  - The current blind position, between 0 and 100
+- am43/&lt;device>/battery   - The current battery level, between 0 and 100
+- am43/&lt;device>rssi       - The current RSSI reported by the device.
 - am43/LWT                - Either 'Online' or 'Offline', MQTT status of this service.
 
 The following MQTT topics are subscribed to:
 
-- am43/<device>/set          - Set the blind to 'OPEN', 'STOP' or 'CLOSE'
-- am43/<device>/set_position - Set the blind position, between 0 and 100.
+- am43/&lt;device>/set          - Set the blind to 'OPEN', 'STOP' or 'CLOSE'
+- am43/&lt;device>/set_position - Set the blind position, between 0 and 100.
 - am43/restart               - Reboot this service.
 
 <device> is the bluetooth mac address of the device, eg 02:69:32:f0:c5:1d
@@ -40,6 +42,26 @@ will need to increase the available space by changing the board options in the
 Arduino IDE. Once you have selected your ESP32 board in *Tools*, select 
 *Tools -> Partition Scheme -> Minimal SPIFFS* to enable the larger program space.
 
+### Patch BLE library
+
+Whilst developing this, I found a bug in the ESP32 Arduino BLE library
+which causes problems when connecting to multiple devices. The
+[patch](https://github.com/espressif/arduino-esp32/pull/4055)
+has been submitted to the BLE maintainers, though if it's not yet in
+your release, find BLEClient.cpp in your installation and change:
+
+```
+// Search for the following block, around line 225 and add the line.
+
+case ESP_GATTC_REG_EVT: {
+  if (evtParam->reg.app_id != m_appId) break;  // <--- ADD THIS LINE.
+  m_gattc_if = gattc_if;
+  m_semaphoreRegEvt.give();
+  break;
+} // ESP_GATTC_REG_EVT
+
+```
+
 ## Testing
 
 Lots of information is printed over the serial console. Connect to your ESP32 device
@@ -51,20 +73,20 @@ client. For example, using mosquitto_sub, you can watch activity with:
 ```
 $ mosquitto_sub -h <mqtt_server> -v -t am43/#
 am43/LWT Online
-am43/02:69:32:f0:c5:1d/available offline
-am43/02:69:32:f0:c5:1d/position 0
-am43/02:69:32:f0:c5:1d/battery 70
-am43/02:69:32:f0:c5:1d/rssi -84
-am43/02:4d:fb:f0:5b:2e/available offline
-am43/02:4d:fb:f0:5b:2e/battery 100
-am43/02:4d:fb:f0:5b:2e/position 0
-am43/02:4d:fb:f0:5b:2e/rssi -59
+am43/02:69:32:f2:c4:1d/available offline
+am43/02:69:32:f2:c4:1d/position 0
+am43/02:69:32:f2:c4:1d/battery 70
+am43/02:69:32:f2:c4:1d/rssi -84
+am43/02:4d:45:f0:5b:2e/available offline
+am43/02:4d:45:f0:5b:2e/battery 100
+am43/02:4d:45:f0:5b:2e/position 0
+am43/02:4d:45:f0:5b:2e/rssi -59
 ```
 
 It's trivial to then control the shades similarly:
 
 ```
-$ mosquitto_sub -h <mqtt_server> -t am43/02:69:32:f0:c5:1d/set -m OPEN
+$ mosquitto_sub -h <mqtt_server> -t am43/02:69:32:f2:c4:1d/set -m OPEN
 ```
 
 You can also control all in unison:
@@ -90,12 +112,22 @@ cover:
   - platform: mqtt
     name: "Bedroom right"
     device_class: "shade"
-    command_topic: "am43/02:69:32:f0:c5:1d/set"
-    position_topic: "am43/02:69:32:f0:c5:1d/position"
-    set_position_topic: "am43/02:69:32:f0:c5:1d/set_position"
-    availability_topic: "am43/02:69:32:f0:c5:1d/available"
+    command_topic: "am43/02:69:32:f2:c4:1d/set"
+    position_topic: "am43/02:69:32:f2:c4:1d/position"
+    set_position_topic: "am43/02:69:32:f2:c4:1d/set_position"
+    availability_topic: "am43/02:69:32:f2:c4:1d/available"
     position_open: 0
     position_closed: 100
 
 ```
 
+## TODO
+
+ - Expose the configured device name, perhaps use it for MQTT topic name.
+ - Consider more functionality such as device configuration.
+ - Allow buttons on the ESP32 for control?
+ - Port this to native ESPHome
+
+## Copyright
+
+Copyright 2020, Ben Buxton. Licenced under the MIT licence, see LICENSE.
