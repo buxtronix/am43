@@ -18,7 +18,7 @@ The following MQTT topis are published to:
 - am43/&lt;device>/available - Either 'offline' or 'online'
 - am43/&lt;device>/position  - The current blind position, between 0 and 100
 - am43/&lt;device>/battery   - The current battery level, between 0 and 100
-- am43/&lt;device>rssi       - The current RSSI reported by the device.
+- am43/&lt;device>/rssi       - The current RSSI reported by the device.
 - am43/LWT                - Either 'Online' or 'Offline', MQTT status of this service.
 
 The following MQTT topics are subscribed to:
@@ -27,7 +27,7 @@ The following MQTT topics are subscribed to:
 - am43/&lt;device>/set_position - Set the blind position, between 0 and 100.
 - am43/restart               - Reboot this service.
 
-<device> is the bluetooth mac address of the device, eg 02:69:32:f0:c5:1d
+&lt;device> is the bluetooth mac address of the device, eg 02:69:32:f0:c5:1d
 
 For the position set commands, you can use name 'all' to change all devices.
 
