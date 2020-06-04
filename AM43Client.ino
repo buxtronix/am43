@@ -42,6 +42,15 @@ String AM43Client::deviceString() {
 void AM43Client::myNotifyCallback(
 BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
   if (length  < 1 || pData[0] != 0x9a) return;
+
+#if 0
+  Serial.printf("%s: 0x", deviceString().c_str());
+  for (int i = 0; i < length ; i++) {
+    if (pData[i]<0x10) Serial.print("0");
+    Serial.print(pData[i], HEX);
+  }
+  Serial.println();
+#endif 
   switch (pData[1]) {
     case AM43_COMMAND_GET_BATTERY: {
       batteryPercent = pData[7];
@@ -50,9 +59,9 @@ BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length
       break;
     }
     case AM43_COMMAND_SET_POSITION: {
-      openLevel = pData[5];
-      if (this->m_ClientCallbacks != nullptr)
-        this->m_ClientCallbacks->onPosition(openLevel);
+      if (pData[3] != AM43_RESPONSE_ACK) {
+        Serial.printf("[%s] Position command nack! (%d)\r\n", deviceString().c_str(), pData[3]);
+      }
       break;
     }
     case AM43_NOTIFY_POSITION: {
@@ -70,7 +79,8 @@ BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length
 
     case AM43_COMMAND_GET_LIGHT: {
       lightLevel = pData[5];
-      Serial.printf("[%s] Light: %d\r\n", deviceString().c_str(), lightLevel);
+      if (this->m_ClientCallbacks != nullptr)
+        this->m_ClientCallbacks->onLightLevel(lightLevel);
       break;
     }
 
@@ -78,12 +88,11 @@ BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length
       if (pData[3] == AM43_RESPONSE_ACK) {
         this->loggedIn = true;
         Serial.printf("[%s] Pin ok\r\n", deviceString().c_str());
-        break;
       } else if (pData[3] == AM43_RESPONSE_NACK) {
         Serial.printf("[%s] Pin incorrect\r\n", deviceString().c_str());
         this->loggedIn = false;
-        break;
       }
+      break;
     }
 
     case AM43_COMMAND_MOVE: {

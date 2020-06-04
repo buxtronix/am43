@@ -13,7 +13,7 @@
 #define AM43_COMMAND_GET_POSITION 0xA7
 #define AM43_REPLY_UNKNOWN1 0xA8
 #define AM43_REPLY_UNKNOWN2 0xA9
-#define AM43_COMMAND_GET_LIGHT 0xA0
+#define AM43_COMMAND_GET_LIGHT 0xAA
 #define AM43_COMMAND_LOGIN 0x17
 #define AM43_RESPONSE_ACK 0x5A
 #define AM43_RESPONSE_NACK 0xA5
@@ -80,6 +80,7 @@ class AM43Callbacks {
     virtual ~AM43Callbacks() {};
     virtual void onPosition(uint8_t position) = 0;
     virtual void onBatteryLevel(uint8_t level) = 0;
+    virtual void onLightLevel(uint8_t level) = 0;
     virtual void onConnect(AM43Client*) = 0;
     virtual void onDisconnect(AM43Client*) = 0;
 };

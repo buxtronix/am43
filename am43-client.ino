@@ -81,6 +81,10 @@ class MyAM43Callbacks: public AM43Callbacks {
       Serial.printf("[%s] Got battery: %d\r\n", rmtAddress().toString().c_str(), level);
       pubSubClient.publish(topic("battery").c_str(), String(level).c_str(), true);
     }
+    void onLightLevel(uint8_t level) {
+      Serial.printf("[%s] Got light: %d\r\n", rmtAddress().toString().c_str(), level);
+      pubSubClient.publish(topic("light").c_str(), String(level).c_str(), true);
+    }
     void onConnect(AM43Client *c) {
       Serial.printf("[%s] Connected\r\n", rmtAddress().toString().c_str());
       pubSubClient.publish(topic("available").c_str(), "online", false);
