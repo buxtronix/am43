@@ -19,7 +19,7 @@
 #define AM43_RESPONSE_NACK 0xA5
 #define AM43_DEFAULT_PIN 8888
 
-#define AM43_UPDATE_INTERVAL 120000  // Frequency to poll battery/position.
+#define AM43_UPDATE_INTERVAL 30000  // Frequency to poll battery/position.
 
 class AM43Callbacks;
 
@@ -72,6 +72,7 @@ class AM43Client : public BLEClientCallbacks {
       AM43Callbacks *m_ClientCallbacks;
       unsigned long lastUpdate;
       String deviceString();
+      uint8_t currentQuery;
 };
 
 

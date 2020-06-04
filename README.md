@@ -18,7 +18,7 @@ The following MQTT topis are published to:
 - am43/&lt;device>/available - Either 'offline' or 'online'
 - am43/&lt;device>/position  - The current blind position, between 0 and 100
 - am43/&lt;device>/battery   - The current battery level, between 0 and 100
-- am43/&lt;device>/rssi       - The current RSSI reported by the device.
+- am43/&lt;device>/light     - The current light level, between 0 and 100
 - am43/LWT                - Either 'Online' or 'Offline', MQTT status of this service.
 
 The following MQTT topics are subscribed to:
@@ -45,20 +45,24 @@ Arduino IDE. Once you have selected your ESP32 board in *Tools*, select
 ### Patch BLE library
 
 Whilst developing this, I found a bug in the ESP32 Arduino BLE library
-which causes problems when connecting to multiple devices. The
-[patch](https://github.com/espressif/arduino-esp32/pull/4055)
-has been submitted to the BLE maintainers, though if it's not yet in
+which causes problems when connecting to multiple devices. A patch
+will been submitted to the BLE maintainers, though if it's not yet in
 your release, find BLEClient.cpp in your installation and change:
 
 ```
-// Search for the following block, around line 225 and add the line.
+// Search for the following block, around line 180 and add the line.
 
-case ESP_GATTC_REG_EVT: {
-  if (evtParam->reg.app_id != m_appId) break;  // <--- ADD THIS LINE.
-  m_gattc_if = gattc_if;
-  m_semaphoreRegEvt.give();
-  break;
-} // ESP_GATTC_REG_EVT
+case ESP_GATTC_DISCONNECT_EVT: {
+  if (evtParam->disconnect.conn_id != getConnId()) break;  // <- ADD THIS LINE
+  // If we receive a disconnect event, set the class flag that indicates that we are
+  // no longer connected.
+  m_isConnected = false;
+
+// Also add another line around line 238.
+
+case ESP_GATTC_CONNECT_EVT: {
+  if (evtParam->connect.conn_id != getConnId()) break;  // <- ADD THIS LINE
+  BLEDevice::updatePeerDevice(this, true, m_gattc_if);
 
 ```
 
@@ -76,11 +80,11 @@ am43/LWT Online
 am43/02:69:32:f2:c4:1d/available offline
 am43/02:69:32:f2:c4:1d/position 0
 am43/02:69:32:f2:c4:1d/battery 70
-am43/02:69:32:f2:c4:1d/rssi -84
+am43/02:69:32:f2:c4:1d/light 49
 am43/02:4d:45:f0:5b:2e/available offline
 am43/02:4d:45:f0:5b:2e/battery 100
 am43/02:4d:45:f0:5b:2e/position 0
-am43/02:4d:45:f0:5b:2e/rssi -59
+am43/02:4d:45:f0:5b:2e/light 68
 ```
 
 It's trivial to then control the shades similarly:
@@ -118,6 +122,19 @@ cover:
     availability_topic: "am43/02:69:32:f2:c4:1d/available"
     position_open: 0
     position_closed: 100
+
+sensor:
+  - platform: mqtt
+    name: "Bedroom right blind battery"
+    state_topic: "am43/02:69:32:f2:c4:1d/battery"
+    unit_of_measurement: "%"
+    device_class: battery
+
+  - platform: mqtt
+    name: "Bedroom left blind light"
+    state_topic: "am43/02:69:32:f2:c4:1d/light"
+    unit_of_measurement: "%"
+    device_class: illuminance
 
 ```
 

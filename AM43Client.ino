@@ -173,7 +173,7 @@ void AM43Client::update() {
       sendPin();
       return;
     }
-    switch(esp_random() % 3) {
+    switch(currentQuery++) {
       case 0:
       sendGetBatteryRequest();
       break;
@@ -184,6 +184,7 @@ void AM43Client::update() {
       sendGetLightRequest();
       break;
     }
+    if (currentQuery > 2) currentQuery = 0;
 
     lastUpdate = millis();
   }
