@@ -251,7 +251,7 @@ void reconnect_mqtt() {
   if (WiFi.status() == WL_CONNECTED && millis() > nextMqttAttempt) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (pubSubClient.connect("am43-gateway", NULL, NULL, "am43/LWT", 0, false, "Offline")) {
+    if (pubSubClient.connect("am43-gateway", MQTT_USERNAME, MQTT_PASSWORD, "am43/LWT", 0, false, "Offline")) {
       Serial.println("connected");
       // Once connected, publish an announcement...
       pubSubClient.publish("am43/LWT", "Online", true);
