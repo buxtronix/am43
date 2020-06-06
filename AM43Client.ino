@@ -9,34 +9,34 @@ AM43Client::AM43Client(BLEAdvertisedDevice *d)
 {}
 
 AM43Client::AM43Client(BLEAdvertisedDevice *d, uint16_t pin) {
-  this->pDevice = d;
-  this->connected = false;
-  this->disconnected = false;
-  this->loggedIn = false;
-  this->pin = pin;
-  this->batteryPercent = 0xff;
+  this->m_Device = d;
+  this->m_Connected = false;
+  this->m_Disconnected = false;
+  this->m_LoggedIn = false;
+  this->m_Pin = pin;
+  this->m_BatteryPercent = 0xff;
   this->m_ClientCallbacks = nullptr;
 }
 
 void AM43Client::onConnect(BLEClient* pclient) {
-  this->connected = true;
+  this->m_Connected = true;
   if (this->m_ClientCallbacks != nullptr)
     this->m_ClientCallbacks->onConnect(this);
 }
 
 void AM43Client::onDisconnect(BLEClient* pclient) {
-  this->connected = false;
-  this->disconnected = true;
+  this->m_Connected = false;
+  this->m_Disconnected = true;
   if (this->m_ClientCallbacks != nullptr)
     this->m_ClientCallbacks->onDisconnect(this);
 }
 
 void AM43Client::setClientCallbacks(AM43Callbacks *callbacks) {
-  m_ClientCallbacks = callbacks;
+  this->m_ClientCallbacks = callbacks;
 }
 
 String AM43Client::deviceString() {
-  return String(pDevice->getName().c_str()) + " " + String(pDevice->getAddress().toString().c_str());
+  return String(this->m_Device->getName().c_str()) + " " + String(this->m_Device->getAddress().toString().c_str());
 }
 
 void AM43Client::myNotifyCallback(
@@ -53,9 +53,9 @@ BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length
 #endif 
   switch (pData[1]) {
     case AM43_COMMAND_GET_BATTERY: {
-      batteryPercent = pData[7];
+      this->m_BatteryPercent = pData[7];
       if (this->m_ClientCallbacks != nullptr)
-        this->m_ClientCallbacks->onBatteryLevel(batteryPercent);
+        this->m_ClientCallbacks->onBatteryLevel(this->m_BatteryPercent);
       break;
     }
     case AM43_COMMAND_SET_POSITION: {
@@ -65,32 +65,32 @@ BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length
       break;
     }
     case AM43_NOTIFY_POSITION: {
-      openLevel = pData[4];
+      this->m_OpenLevel = pData[4];
       if (this->m_ClientCallbacks != nullptr)
-        this->m_ClientCallbacks->onPosition(openLevel);
+        this->m_ClientCallbacks->onPosition(this->m_OpenLevel);
       break;
     }
     case AM43_COMMAND_GET_POSITION: {
-      openLevel = pData[5];
+      this->m_OpenLevel = pData[5];
       if (this->m_ClientCallbacks != nullptr)
-        this->m_ClientCallbacks->onPosition(openLevel);
+        this->m_ClientCallbacks->onPosition(this->m_OpenLevel);
       break;
     }
 
     case AM43_COMMAND_GET_LIGHT: {
-      lightLevel = pData[5];
+      this->m_LightLevel = pData[5];
       if (this->m_ClientCallbacks != nullptr)
-        this->m_ClientCallbacks->onLightLevel(lightLevel);
+        this->m_ClientCallbacks->onLightLevel(this->m_LightLevel);
       break;
     }
 
     case AM43_COMMAND_LOGIN: {
       if (pData[3] == AM43_RESPONSE_ACK) {
-        this->loggedIn = true;
+        this->m_LoggedIn = true;
         Serial.printf("[%s] Pin ok\r\n", deviceString().c_str());
       } else if (pData[3] == AM43_RESPONSE_NACK) {
         Serial.printf("[%s] Pin incorrect\r\n", deviceString().c_str());
-        this->loggedIn = false;
+        this->m_LoggedIn = false;
       }
       break;
     }
@@ -129,64 +129,64 @@ BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length
 
 void AM43Client::sendGetBatteryRequest() {
   std::vector<uint8_t> data{0x1};
-  sendCommand(AM43_COMMAND_GET_BATTERY, data);
+  this->sendCommand(AM43_COMMAND_GET_BATTERY, data);
 }
 
 void AM43Client::sendGetLightRequest() {
   std::vector<uint8_t> data{0x1};
-  sendCommand(AM43_COMMAND_GET_LIGHT, data);
+  this->sendCommand(AM43_COMMAND_GET_LIGHT, data);
 }
 
 void AM43Client::sendGetPositionRequest() {
   std::vector<uint8_t> data{0x1};
-  sendCommand(AM43_COMMAND_GET_POSITION, data);
+  this->sendCommand(AM43_COMMAND_GET_POSITION, data);
 }
 
 void AM43Client::sendPin() {
-  std::vector<uint8_t> data{((uint16_t)this->pin & 0xff00)>>8, ((uint16_t)this->pin & 0xff)};
-  sendCommand(AM43_COMMAND_LOGIN, data);
+  std::vector<uint8_t> data{((uint16_t)this->m_Pin & 0xff00)>>8, ((uint16_t)this->m_Pin & 0xff)};
+  this->sendCommand(AM43_COMMAND_LOGIN, data);
 }
 
 void AM43Client::open() {
   std::vector<uint8_t> data{0xDD};
-  sendCommand(AM43_COMMAND_MOVE, data);
+  this->sendCommand(AM43_COMMAND_MOVE, data);
 }
 
 void AM43Client::stop() {
   std::vector<uint8_t> data{0xCC};
-  sendCommand(AM43_COMMAND_MOVE, data);
+  this->sendCommand(AM43_COMMAND_MOVE, data);
 }
 
 void AM43Client::close() {
   std::vector<uint8_t> data{0xEE};
-  sendCommand(AM43_COMMAND_MOVE, data);
+  this->sendCommand(AM43_COMMAND_MOVE, data);
 }
 
 void AM43Client::setPosition(uint8_t pos) {
   std::vector<uint8_t> data{pos};
-  sendCommand(AM43_COMMAND_SET_POSITION, data);
+  this->sendCommand(AM43_COMMAND_SET_POSITION, data);
 }
 
 void AM43Client::update() {
-  if (millis() - lastUpdate > AM43_UPDATE_INTERVAL) {
-    if (!loggedIn) {
-      sendPin();
+  if (millis() - this->m_LastUpdate > AM43_UPDATE_INTERVAL) {
+    if (!this->m_LoggedIn) {
+      this->sendPin();
       return;
     }
-    switch(currentQuery++) {
+    switch(this->m_CurrentQuery++) {
       case 0:
-      sendGetBatteryRequest();
+      this->sendGetBatteryRequest();
       break;
       case 1:
-      sendGetPositionRequest();
+      this->sendGetPositionRequest();
       break;
       case 2:
-      sendGetLightRequest();
+      this->sendGetLightRequest();
       break;
     }
-    if (currentQuery > 2) currentQuery = 0;
+    if (this->m_CurrentQuery > 2) this->m_CurrentQuery = 0;
 
-    lastUpdate = millis();
+    this->m_LastUpdate = millis();
   }
 }
 
@@ -212,52 +212,51 @@ void AM43Client::sendCommand(uint8_t command, std::vector<uint8_t> data) {
         Serial.print(sendData[i], HEX);
       }
       Serial.println();
-  pChar->writeValue(&sendData[0], sendData.size());
+  m_Char->writeValue(&sendData[0], sendData.size());
 }
 
 boolean AM43Client::connectToServer() {
-  Serial.printf("Attempting to connect to: %s ", pDevice->getAddress().toString().c_str());
+  Serial.printf("Attempting to connect to: %s ", this->m_Device->getAddress().toString().c_str());
   unsigned long connectStart = millis();
-  this->doConnect = false;
+  this->m_DoConnect = false;
 
-  pClient  = BLEDevice::createClient();
-  pClient->setClientCallbacks(this);
+  this->m_Client  = BLEDevice::createClient();
+  this->m_Client->setClientCallbacks(this);
 
-  this->connected = false;
+  this->m_Connected = false;
   // Connect to the remote BLE Server.
   Serial.print("...");
-  if (pClient->connect(pDevice)) {   // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
+  if (this->m_Client->connect(this->m_Device)) {   // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
     Serial.println(" - Connected to server");
   } else {
     Serial.println(" - Failed to connect.");
-    this->disconnected = true;
-    this->connected = false;
+    this->m_Disconnected = true;
+    this->m_Connected = false;
     return false;
   }
 
   // Obtain a reference to the service we are after in the remote BLE server.
-  BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
+  BLERemoteService* pRemoteService = m_Client->getService(serviceUUID);
   if (pRemoteService == nullptr) {
     Serial.print("Failed to find our service UUID: ");
     Serial.println(serviceUUID.toString().c_str());
-    pClient->disconnect();
+    this->m_Client->disconnect();
     return false;
   }
 
   // Obtain a reference to the characteristic in the service of the remote BLE server.
-  pChar = pRemoteService->getCharacteristic(charUUID);
-  if (pChar == nullptr) {
+  m_Char = pRemoteService->getCharacteristic(charUUID);
+  if (m_Char == nullptr) {
     Serial.print("Failed to find our characteristic UUID: ");
     Serial.println(charUUID.toString().c_str());
-    pClient->disconnect();
+    this->m_Client->disconnect();
     return false;
   }
     
-  if(pChar->canNotify())
-    pChar->registerForNotify(notifyCallback);
+  if(this->m_Char->canNotify())
+    this->m_Char->registerForNotify(notifyCallback);
 
-  this->connected = true;
+  this->m_Connected = true;
   Serial.printf("Connect took %dms\r\n", millis()-connectStart);
-  //this->sendPin();
   return true;
 }

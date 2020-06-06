@@ -62,12 +62,16 @@ class MyAM43Callbacks: public AM43Callbacks {
     AM43Client *client;
 
     BLEAddress rmtAddress() {
-      return client->pDevice->getAddress();
+      return client->m_Device->getAddress();
     }
 
     String topic(char *t) {
       char top[64];
-      sprintf(top, "%s/%s/%s", MQTT_TOPIC_PREFIX, client->pDevice->getAddress().toString().c_str(), t);
+#ifdef AM43_USE_NAME_FOR_TOPIC
+      sprintf(top, "%s/%s/%s", MQTT_TOPIC_PREFIX, client->m_Name.c_str(), t);
+#else
+      sprintf(top, "%s/%s/%s", MQTT_TOPIC_PREFIX, client->m_Device->getAddress().toString().c_str(), t);
+#endif
       String ret = String(top);
       //ret.replace(":", "");
       return ret;
@@ -113,7 +117,7 @@ std::map<std::string, MyAM43Callbacks*> getClients() {
 static void notifyCallback(BLERemoteCharacteristic* rChar, uint8_t* pData, size_t length, bool isNotify) {
   auto cls = getClients();
   for (auto const& c : cls) {
-    if (c.second->client->pChar == rChar) {
+    if (c.second->client->m_Char == rChar) {
       c.second->client->myNotifyCallback(rChar, pData, length, isNotify);
       return;
     }
@@ -141,7 +145,11 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
   auto cls = getClients();
   for (auto const& c : cls) {
     auto cl = c.second->client;
-    if (String(cl->pDevice->getAddress().toString().c_str()) == address || address == "all") {
+#ifdef AM43_USE_NAME_FOR_TOPIC
+    if (String(cl->m_Name.c_str()) == address || address == "all") {
+#else
+    if (String(cl->m_Device->getAddress().toString().c_str()) == address || address == "all") {
+#endif
       if (command == "set") {
         payload.toLowerCase();
         if (payload == "open") cl->open();
@@ -175,7 +183,8 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
         }
       }
       AM43Client* newClient = new AM43Client(new BLEAdvertisedDevice(advertisedDevice), am43Pin);
-      newClient->doConnect = true;
+      newClient->m_DoConnect = true;
+      newClient->m_Name = advertisedDevice.getName();
       MyAM43Callbacks *cbs = new MyAM43Callbacks();
       cbs->client = newClient;
       newClient->setClientCallbacks(cbs);
@@ -253,7 +262,7 @@ void reconnect_mqtt() {
       // Re-subscribe any Am43 clients.
       auto cls = getClients();
       for (auto const& c : cls) {
-        if (c.second->client->connected) {
+        if (c.second->client->m_Connected) {
           c.second->onConnect(c.second->client);
           pubSubClient.loop();
         }
@@ -325,12 +334,12 @@ void loop() {
     std::vector<std::string> removeList; // Clients will be added as they are disconnected.
     auto cls = getClients();
     for (auto const &c : cls) {
-      if (c.second->client->doConnect && !scanning) {
+      if (c.second->client->m_DoConnect && !scanning) {
         c.second->client->connectToServer();
         break;  // Connect takes some time, so break out to allow other processing.
       }
-      if (c.second->client->connected) c.second->client->update();
-      if (c.second->client->disconnected) removeList.push_back(c.first);
+      if (c.second->client->m_Connected) c.second->client->update();
+      if (c.second->client->m_Disconnected) removeList.push_back(c.first);
     }
     // Remove any clients that have been disconnected.
     

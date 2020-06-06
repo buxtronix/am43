@@ -27,24 +27,26 @@ class AM43Client : public BLEClientCallbacks {
   public:
     AM43Client(BLEAdvertisedDevice*);
     AM43Client(BLEAdvertisedDevice *d, uint16_t pin);
-    BLEAdvertisedDevice* pDevice;
-    BLEClient* pClient;
-    BLERemoteCharacteristic* pChar;
+
+    BLEAdvertisedDevice* m_Device;
+    BLEClient* m_Client;
+    BLERemoteCharacteristic* m_Char;
+    std::string m_Name;
     // We are connected.
-    boolean connected;
+    boolean m_Connected;
     // Previously (attempted) connected, now disconnected.
-    boolean disconnected;
+    boolean m_Disconnected;
     // True to start a connection.
-    boolean doConnect; 
+    boolean m_DoConnect;
     // We're logged in (correct pin)
-    boolean loggedIn;
+    boolean m_LoggedIn;
 
     // Latest battery level (percent)
-    unsigned char batteryPercent;
+    unsigned char m_BatteryPercent;
     // Latest closed amount (0=open, 100=closed)
-    unsigned char openLevel;
-    unsigned char lightLevel;
-    int rssi;
+    unsigned char m_OpenLevel;
+    unsigned char m_LightLevel;
+    int m_Rssi;
   
     void onConnect(BLEClient* pclient);
     void onDisconnect(BLEClient* pclient);
@@ -68,11 +70,11 @@ class AM43Client : public BLEClientCallbacks {
     protected:
       void sendPin();
       void sendCommand(uint8_t, std::vector<uint8_t>);
-      uint16_t pin;
+      uint16_t m_Pin;
       AM43Callbacks *m_ClientCallbacks;
-      unsigned long lastUpdate;
+      unsigned long m_LastUpdate;
       String deviceString();
-      uint8_t currentQuery;
+      uint8_t m_CurrentQuery;
 };
 
 

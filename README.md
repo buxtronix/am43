@@ -29,12 +29,15 @@ The following MQTT topics are subscribed to:
 
 &lt;device> is the bluetooth mac address of the device, eg 02:69:32:f0:c5:1d
 
+If you enable AM43_USE_NAME_FOR_TOPIC then the device name configured is used
+in the topic instead of the mac.
+
 For the position set commands, you can use name 'all' to change all devices.
 
 ## Getting started
 
 In the file *config.h*, configure your Wifi credentials and your MQTT server
-address. If your AM43 devices are not using the default pin (8888) also set it
+details. If your AM43 devices are not using the default pin (8888) also set it
 there.
 
 The sketch takes up a lot of space on flash thanks to the use of Wifi and BLE - you
