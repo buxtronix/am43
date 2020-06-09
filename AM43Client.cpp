@@ -1,5 +1,10 @@
+#include <Arduino.h>
 #include "AM43Client.h"
 #include "BLEDevice.h"
+
+BLEUUID serviceUUID(AM43_SERVICE_UUID);
+BLEUUID    charUUID(AM43_CHAR_UUID);
+
 
 uint8_t startPacket[5] = {0x00, 0xff, 0x00, 0x00, 0x9a};
 std::vector<uint8_t> startPkt(startPacket, startPacket + sizeof(startPacket)/sizeof(startPacket[0]));
@@ -215,7 +220,7 @@ void AM43Client::sendCommand(uint8_t command, std::vector<uint8_t> data) {
   m_Char->writeValue(&sendData[0], sendData.size());
 }
 
-boolean AM43Client::connectToServer() {
+boolean AM43Client::connectToServer(notify_callback callback) {
   Serial.printf("Attempting to connect to: %s ", this->m_Device->getAddress().toString().c_str());
   unsigned long connectStart = millis();
   this->m_DoConnect = false;
@@ -254,7 +259,7 @@ boolean AM43Client::connectToServer() {
   }
     
   if(this->m_Char->canNotify())
-    this->m_Char->registerForNotify(notifyCallback);
+    this->m_Char->registerForNotify(callback);
 
   this->m_Connected = true;
   Serial.printf("Connect took %dms\r\n", millis()-connectStart);

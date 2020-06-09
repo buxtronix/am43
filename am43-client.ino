@@ -51,9 +51,9 @@ WiFiClient espClient;
 PubSubClient pubSubClient(espClient);
 
 // The remote service we wish to connect to.
-static BLEUUID serviceUUID(AM43_SERVICE_UUID);
+//BLEUUID serviceUUID(AM43_SERVICE_UUID);
 // The characteristic of the remote service we are interested in.
-static BLEUUID    charUUID(AM43_CHAR_UUID);
+//BLEUUID    charUUID(AM43_CHAR_UUID);
 
 FreeRTOS::Semaphore clientListSem = FreeRTOS::Semaphore("clients");
 
@@ -335,7 +335,7 @@ void loop() {
     auto cls = getClients();
     for (auto const &c : cls) {
       if (c.second->client->m_DoConnect && !scanning) {
-        c.second->client->connectToServer();
+        c.second->client->connectToServer(notifyCallback);
         break;  // Connect takes some time, so break out to allow other processing.
       }
       if (c.second->client->m_Connected) c.second->client->update();

@@ -21,6 +21,9 @@
 
 #define AM43_UPDATE_INTERVAL 30000  // Frequency to poll battery/position.
 
+extern BLEUUID serviceUUID;
+extern BLEUUID    charUUID;
+
 class AM43Callbacks;
 
 class AM43Client : public BLEClientCallbacks {
@@ -54,7 +57,7 @@ class AM43Client : public BLEClientCallbacks {
     void setClientCallbacks(AM43Callbacks *callbacks);
     void myNotifyCallback(BLERemoteCharacteristic*, uint8_t*, size_t, bool);
   
-    boolean connectToServer();
+    boolean connectToServer(notify_callback);
 
     void sendGetBatteryRequest();
     void sendGetLightRequest();
