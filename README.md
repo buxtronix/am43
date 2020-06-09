@@ -15,17 +15,21 @@ MQTT topics to control and get status from them.
 
 The following MQTT topis are published to:
 
-- am43/&lt;device>/available - Either 'offline' or 'online'
-- am43/&lt;device>/position  - The current blind position, between 0 and 100
-- am43/&lt;device>/battery   - The current battery level, between 0 and 100
-- am43/&lt;device>/light     - The current light level, between 0 and 100
-- am43/LWT                - Either 'Online' or 'Offline', MQTT status of this service.
+| Topic | Description | Values |
+| ----- | ----------- | ------ |
+| am43/&lt;device>/available | Connection status of the blind controller | Either 'offline' or 'online' |
+| am43/&lt;device>/position  | The current blind position | between 0 and 100 |
+| am43/&lt;device>/battery   | The current battery level | between 0 and 100 |
+| am43/&lt;device>/light     | The current light level | between 0 and 100 |
+| am43/LWT                | MQTT connection status | Either 'Online' or 'Offline' |
 
 The following MQTT topics are subscribed to:
 
-- am43/&lt;device>/set          - Set the blind to 'OPEN', 'STOP' or 'CLOSE'
-- am43/&lt;device>/set_position - Set the blind position, between 0 and 100.
-- am43/restart               - Reboot this service.
+| Topic | Description | Values |
+| ----- | ----------- | ------ |
+| am43/&lt;device>/set          | Set the blind position | 'OPEN', 'STOP' or 'CLOSE' |
+| am43/&lt;device>/set_position | Set the blind % position | between 0 and 100. |
+| am43/restart               | Reboot this service | Ignored.
 
 &lt;device> is the bluetooth mac address of the device, eg 02:69:32:f0:c5:1d
 
@@ -80,11 +84,11 @@ client. For example, using mosquitto_sub, you can watch activity with:
 ```
 $ mosquitto_sub -h <mqtt_server> -v -t am43/#
 am43/LWT Online
-am43/02:69:32:f2:c4:1d/available offline
+am43/02:69:32:f2:c4:1d/available online
 am43/02:69:32:f2:c4:1d/position 0
 am43/02:69:32:f2:c4:1d/battery 70
 am43/02:69:32:f2:c4:1d/light 49
-am43/02:4d:45:f0:5b:2e/available offline
+am43/02:4d:45:f0:5b:2e/available online
 am43/02:4d:45:f0:5b:2e/battery 100
 am43/02:4d:45:f0:5b:2e/position 0
 am43/02:4d:45:f0:5b:2e/light 68
@@ -143,7 +147,6 @@ sensor:
 
 ## TODO
 
- - Expose the configured device name, perhaps use it for MQTT topic name.
  - Consider more functionality such as device configuration.
  - Allow buttons on the ESP32 for control?
  - Port this to native ESPHome
