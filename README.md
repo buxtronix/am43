@@ -54,7 +54,10 @@ Arduino IDE. Once you have selected your ESP32 board in *Tools*, select
 Whilst developing this, I found a bug in the ESP32 Arduino BLE library
 which causes problems when connecting to multiple devices. A patch
 will been submitted to the BLE maintainers, though if it's not yet in
-your release, find BLEClient.cpp in your installation and change:
+your release, you will need to make the following changes, which result in
+a massive stability gain:
+
+Find <b>BLEClient.cpp</b> in your installation, and make the following change.
 
 ```
 // Search for the following block, around line 180 and add the line.
@@ -71,6 +74,28 @@ case ESP_GATTC_CONNECT_EVT: {
   if (evtParam->connect.conn_id != getConnId()) break;  // <- ADD THIS LINE
   BLEDevice::updatePeerDevice(this, true, m_gattc_if);
 
+```
+
+Next, you need to find the file <b>esp32-hal-bt.c</b> and make the following changes:
+
+```
+// Change the mode to BLE only on the following line:
+
+bool btStart(){
+    esp_bt_controller_config_t cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+    cfg.mode = ESP_BT_MODE_BLE;  // <- ADD THIS LINE
+
+// Then around 10 lines below this, replace these lines:
+//       if (esp_bt_controller_enable(BT_MODE)) {
+//            log_e("BT Enable failed");
+//            return false;
+//        }
+// with:
+        auto err_p = esp_bt_controller_enable(ESP_BT_MODE_BLE);
+        if (err_p) {
+            log_e("BT Enable failed err=%d", err_p);
+            return false;
+        }
 ```
 
 ## Testing

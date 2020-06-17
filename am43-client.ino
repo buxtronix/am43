@@ -139,6 +139,8 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
   Serial.printf("Addr: %s Cmd: %s\r\n", address.c_str(), command.c_str());
 
   if (address == "restart") {
+    pubSubClient.disconnect();
+    delay(200);
     ESP.restart();
   }
 
@@ -277,12 +279,11 @@ void reconnect_mqtt() {
   }
 }
 
+bool otaUpdating = false;
 
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting Arduino BLE Client application...");
-  BLEDevice::init("");
-  initBLEScan();
   setup_wifi();
   pubSubClient.setServer(mqtt_server, 1883);
   pubSubClient.setCallback(mqtt_callback);
@@ -297,9 +298,12 @@ void setup() {
 
       // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
       Serial.println("Start updating " + type);
+      otaUpdating = true;
+      BLEDevice::getScan()->stop();
     })
     .onEnd([]() {
       Serial.println("\nEnd");
+      pubSubClient.disconnect();
     })
     .onProgress([](unsigned int progress, unsigned int total) {
       Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
@@ -311,10 +315,14 @@ void setup() {
       else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
       else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
       else if (error == OTA_END_ERROR) Serial.println("End Failed");
+      otaUpdating = false;
     });
 
+  otaUpdating = false;
   ArduinoOTA.begin();
-
+  esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+  BLEDevice::init("");
+  initBLEScan();
 } // End of setup.
 
 unsigned long lastAM43update = 0;
@@ -352,7 +360,7 @@ void loop() {
     lastAM43update = millis();
   }
   // Start a new scan every 60s.
-  if (millis() - lastScan > 60000) {
+  if (millis() - lastScan > 60000 && !otaUpdating) {
     initBLEScan();
     lastScan = millis();
   }
