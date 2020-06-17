@@ -33,7 +33,7 @@ The following MQTT topics are subscribed to:
 
 &lt;device> is the bluetooth mac address of the device, eg 02:69:32:f0:c5:1d
 
-If you enable AM43_USE_NAME_FOR_TOPIC then the device name configured is used
+If you enable AM43_USE_NAME_FOR_TOPIC in config.h, then the device name configured is used
 in the topic instead of the mac.
 
 For the position set commands, you can use name 'all' to change all devices.
@@ -99,6 +99,13 @@ bool btStart(){
 
 ## Testing
 
+Note that only one BLE client can connect to the AM43 at a time. So you cannot
+have multiple ESP controllers or have the device app (Blind Engine) running at
+the same time.
+
+You should perform initial setup of your AM43 devices with the native app
+before running this gateway.
+
 Lots of information is printed over the serial console. Connect to your ESP32 device
 at 115200 baud and there should be plenty of chatter.
 
@@ -130,12 +137,6 @@ You can also control all in unison:
 $ mosquitto_sub -h <mqtt_server> -t am43/all/set -m CLOSE
 ```
 
-Note that only one BLE client can connect to the AM43 at a time. So you cannot
-have multiple controllers or have the device app (Blind Engine) running at
-the same time.
-
-It's recommended that you configure your AM43 devices with the native app first.
-
 ## Home Assistant configuration
 
 The MQTT topics are set to integrate natively with Home Assistant. Once both
@@ -151,8 +152,10 @@ cover:
     position_topic: "am43/02:69:32:f2:c4:1d/position"
     set_position_topic: "am43/02:69:32:f2:c4:1d/set_position"
     availability_topic: "am43/02:69:32:f2:c4:1d/available"
-    position_open: 0
-    position_closed: 100
+# Devices dont always report 0, open might be 1 or 2.
+    position_open: 2
+# Devices dont always report 100, closed might be 99 or 100.
+    position_closed: 99
 
 sensor:
   - platform: mqtt
