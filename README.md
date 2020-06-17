@@ -51,11 +51,10 @@ Arduino IDE. Once you have selected your ESP32 board in *Tools*, select
 
 ### Patch BLE library
 
-Whilst developing this, I found a bug in the ESP32 Arduino BLE library
-which causes problems when connecting to multiple devices. A patch
-will been submitted to the BLE maintainers, though if it's not yet in
-your release, you will need to make the following changes, which result in
-a massive stability gain:
+Whilst developing this, I found bugs in the ESP32 Arduino BLE libraries
+which cause significant instability issues. A patch will been submitted to
+the BLE maintainers, though if it's not yet in your release, you will need
+to make the following changes, which result in a massive stability gain:
 
 Find <b>BLEClient.cpp</b> in your installation, and make the following change.
 
