@@ -1,6 +1,6 @@
 # AM43 blind controller library for ESP32
 
-*** Update June 18: The code is now structured as a library, see 'Getting started' instructions below ***
+***Update June 18: The code is now structured as a library, see 'Getting started' instructions below***
 
 A library and example sketch that allows you to control AM43 style blind controllers
 using an ESP32 device's built-in Bluetooth radio.
