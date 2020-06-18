@@ -1,17 +1,24 @@
-# AM43  blind controller for ESP32
+# AM43 blind controller library for ESP32
 
-A proxy that allows you to control AM43 style blind controllers via MQTT,
+*** Update June 18: The code is now structured as a library, see 'Getting started' instructions below ***
+
+A library and example sketch that allows you to control AM43 style blind controllers
 using an ESP32 device's built-in Bluetooth radio.
+
+Included is an example sketch to perform control and monitoring via MQTT.
 
 These blind and rollershade controllers are sold under various names, including
 Zemismart, A-OK and all use the "Blind Engine" app.
 
 Feel free to send PRs.
 
-## Overview
+## MQTTBlinds example overview
  
 This sketch will scan for and auto-connect to any AM43 devices in range, then provide
 MQTT topics to control and get status from them.
+
+Note that the Arduino ESP32 integration only supports connecting to a maximum of 3
+bluetooth devices. See below if you have more.
 
 The following MQTT topis are published to:
 
@@ -40,7 +47,12 @@ For the position set commands, you can use name 'all' to change all devices.
 
 ## Getting started
 
-In the file *config.h*, configure your Wifi credentials and your MQTT server
+Download this archive and unzip it to your Arduino installation's *libraries*
+folder, it should extract as its own sub-folder. Then (re)start the IDE.
+
+Open the example Sketch under *File -> Examples -> AM43Client -> MQTTBlinds*
+
+In the file tab *config.h*, configure your Wifi credentials and your MQTT server
 details. If your AM43 devices are not using the default pin (8888) also set it
 there.
 
@@ -137,6 +149,32 @@ You can also control all in unison:
 $ mosquitto_sub -h <mqtt_server> -t am43/all/set -m CLOSE
 ```
 
+## Multiple devices
+
+If you have up to three AM43 devices connecting to the one ESP32, then it should
+just work out of the box.
+
+However if you have more devices, or just want to limit which AM43's are
+controlled by a given ESP32, then you'll need to set up as follows.
+
+### Multiple ESP32 proxy devices
+
+This might be for a setup where you have AM43s in different parts of the house
+and you'd like to ensure each ESP32 only controls specific motor(s) such
+as the closest.
+
+For each ESP32, you should edit *config.h* and add the MAC address of the
+desired AM43(s) to DEVICE_ALLOWLIST. Separate each address by a comma. You
+can find the addresses either in the Arduino serial console or the Blind
+Engine app. Then that ESP will not connect to any other AM43.
+
+### More than three AM43's
+
+Arduino BLE can only connect to at most three bluetooth devices (unless
+you custom compile it). If you have more devices you will need to have
+additional ESP32 proxies with this code, each setup with a separate allow
+list as above.
+
 ## Home Assistant configuration
 
 The MQTT topics are set to integrate natively with Home Assistant. Once both
@@ -152,7 +190,7 @@ cover:
     position_topic: "am43/02:69:32:f2:c4:1d/position"
     set_position_topic: "am43/02:69:32:f2:c4:1d/set_position"
     availability_topic: "am43/02:69:32:f2:c4:1d/available"
-# Devices dont always report 0, open might be 1 or 2.
+# Devices dont always report 0, open might be 0, 1 or 2.
     position_open: 2
 # Devices dont always report 100, closed might be 99 or 100.
     position_closed: 99
@@ -176,6 +214,7 @@ sensor:
 
  - Consider more functionality such as device configuration.
  - Allow buttons on the ESP32 for control?
+ - On-demand BLE connect to save AM43 device battery.
  - Port this to native ESPHome
 
 ## Copyright

@@ -360,8 +360,9 @@ void loop() {
   pubSubClient.loop();
   
   if (millis()-lastAM43update > 500) { // Only process this every 500ms.
-    std::vector<std::string> removeList; // Clients will be added as they are disconnected.
+    std::vector<std::string> removeList; // Clients will be added to this as they are disconnected.
     auto cls = getClients();
+    // Iterate through connected devices, perform any connect/update/etc actions.
     for (auto const &c : cls) {
       if (c.second->client->m_DoConnect && !scanning) {
         c.second->client->connectToServer(notifyCallback);
@@ -371,7 +372,6 @@ void loop() {
       if (c.second->client->m_Disconnected) removeList.push_back(c.first);
     }
     // Remove any clients that have been disconnected.
-    
     for (auto i : removeList) {
       clientListSem.take("clientRemove");
       allClients.erase(i);
