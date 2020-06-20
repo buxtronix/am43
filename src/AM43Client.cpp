@@ -211,12 +211,12 @@ void AM43Client::sendCommand(uint8_t command, std::vector<uint8_t> data) {
   sendData.push_back((char)data.size());
   sendData.insert(sendData.end(), data.begin(), data.end());
   sendData.push_back(checksum(sendData));
-      Serial.printf("[%s] AM43 Send: ", deviceString().c_str());
-      for (int i = 0; i < sendData.size() ; i++) {
-        if (sendData[i]<0x10) Serial.print("0");
-        Serial.print(sendData[i], HEX);
-      }
-      Serial.println();
+  Serial.printf("[%s] AM43 Send: ", deviceString().c_str());
+  for (int i = 0; i < sendData.size() ; i++) {
+    if (sendData[i]<0x10) Serial.print("0");
+      Serial.print(sendData[i], HEX);
+    }
+  Serial.println();
   m_Char->writeValue(&sendData[0], sendData.size());
 }
 
