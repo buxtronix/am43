@@ -44,9 +44,17 @@ PubSubClient pubSubClient(espClient);
 
 FreeRTOS::Semaphore clientListSem = FreeRTOS::Semaphore("clients");
 
+void mqtt_callback(char* top, byte* pay, unsigned int length);
+
+unsigned long lastScan = 0;
+boolean scanning = false;
+
 class MyAM43Callbacks: public AM43Callbacks {
   public:
     AM43Client *client;
+    WiFiClient wifiClient;
+    PubSubClient *mqtt;
+    unsigned long nextMqttAttempt;
 
     BLEAddress rmtAddress() {
       return client->m_Device->getAddress();
@@ -63,30 +71,56 @@ class MyAM43Callbacks: public AM43Callbacks {
       //ret.replace(":", "");
       return ret;
     }
-    
+
     void onPosition(uint8_t pos) {
       Serial.printf("[%s] Got position: %d\r\n", rmtAddress().toString().c_str(), pos);
-      pubSubClient.publish(topic("position").c_str(), String(pos).c_str(), true);
+      this->mqtt->publish(topic("position").c_str(), String(pos).c_str(), false);
     }
     void onBatteryLevel(uint8_t level) {
       Serial.printf("[%s] Got battery: %d\r\n", rmtAddress().toString().c_str(), level);
-      pubSubClient.publish(topic("battery").c_str(), String(level).c_str(), true);
+      this->mqtt->publish(topic("battery").c_str(), String(level).c_str(), false);
     }
     void onLightLevel(uint8_t level) {
       Serial.printf("[%s] Got light: %d\r\n", rmtAddress().toString().c_str(), level);
-      pubSubClient.publish(topic("light").c_str(), String(level).c_str(), true);
+      this->mqtt->publish(topic("light").c_str(), String(level).c_str(), false);
     }
     void onConnect(AM43Client *c) {
       Serial.printf("[%s] Connected\r\n", rmtAddress().toString().c_str());
-      pubSubClient.publish(topic("available").c_str(), "online", false);
-      pubSubClient.subscribe(topic("set").c_str());
-      pubSubClient.subscribe(topic("set_position").c_str());
+      this->mqtt = new PubSubClient(this->wifiClient);
+      this->nextMqttAttempt = 0;
+      this->mqtt->setServer(mqtt_server, 1883);
+      this->mqtt->setCallback(mqtt_callback);
+      lastScan = millis()-60000; // Trigger a new scan after connection.
     }
     void onDisconnect(AM43Client *c) {
       Serial.printf("[%s] Disconnected\r\n", rmtAddress().toString().c_str());
-      pubSubClient.publish(topic("available").c_str(), "offline", true);
-      pubSubClient.unsubscribe(topic("set").c_str());
-      pubSubClient.unsubscribe(topic("set_position").c_str());
+      if (this->mqtt != nullptr && this->mqtt->connected()) {
+        // Publish offline availability as LWT is only for ungraceful disconnect.
+        this->mqtt->publish(topic("available").c_str(), "offline", true);
+        this->mqtt->loop();
+        this->mqtt->disconnect();
+      }
+      this->mqtt = nullptr;
+    }
+
+    void handle() {
+      if (this->mqtt == nullptr) return;
+      if (this->mqtt->connected()) {
+        this->mqtt->loop();
+        return;
+      }
+      if (WiFi.status() != WL_CONNECTED || millis() < this->nextMqttAttempt) return;
+      if (!this->mqtt->connect(topic("").c_str(), MQTT_USERNAME, MQTT_PASSWORD, topic("available").c_str(), 0, false, "offline")) {
+        Serial.print("MQTT connect failed, rc=");
+        Serial.print(this->mqtt->state());
+        Serial.println(" retrying in 5s.");
+        this->nextMqttAttempt = millis() + 5000;
+        return;
+      }
+      this->mqtt->publish(topic("available").c_str(), "online", true);
+      this->mqtt->subscribe(topic("set").c_str());
+      this->mqtt->subscribe(topic("set_position").c_str());
+      this->mqtt->loop();
     }
 };
 
@@ -100,6 +134,7 @@ std::map<std::string, MyAM43Callbacks*> getClients() {
   clientListSem.give();
   return cls;
 }
+
 
 static void notifyCallback(BLERemoteCharacteristic* rChar, uint8_t* pData, size_t length, bool isNotify) {
   auto cls = getClients();
@@ -125,13 +160,14 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
   String command = topic.substring(i2+1);
   Serial.printf("Addr: %s Cmd: %s\r\n", address.c_str(), command.c_str());
 
+  auto cls = getClients();
   if (address == "restart") {
-    pubSubClient.disconnect();
+    for (auto const& c : cls)
+      c.second->onDisconnect(c.second->client);
     delay(200);
     ESP.restart();
   }
 
-  auto cls = getClients();
   for (auto const& c : cls) {
     auto cl = c.second->client;
 #ifdef AM43_USE_NAME_FOR_TOPIC
@@ -150,6 +186,33 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
       }
     }
   }
+}
+
+std::vector<BLEAddress> allowList;
+
+void parseAllowList() {
+  std::string allowListStr = std::string(DEVICE_ALLOWLIST);
+  if (allowListStr.length() == 0) return;
+  size_t idx1 = 0;
+
+  for(;;) {
+    auto idx = allowListStr.find(',', idx1);
+    if (idx == std::string::npos) break;
+    allowList.push_back(BLEAddress(allowListStr.substr(idx1, idx-idx1)));
+    idx1 = idx+1;
+  }
+  allowList.push_back(BLEAddress(allowListStr.substr(idx1)));
+  Serial.println("AllowList contains the following device(s):");
+  for (auto dev : allowList)
+    Serial.printf(" Mac: %s \n", dev.toString().c_str());
+}
+
+bool isAllowed(BLEAddress address) {
+  if (allowList.size() < 1) return true;
+  for (auto a : allowList) {
+    if (a.equals(address)) return true;
+  }
+  return false;
 }
 
 /**
@@ -184,12 +247,11 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       clientListSem.take("clientInsert");
       allClients.insert({advertisedDevice.toString(), cbs});
       clientListSem.give();
+      BLEDevice::getScan()->stop();
+      scanning = false;
     } // Found our server
   } // onResult
 }; // MyAdvertisedDeviceCallbacks
-
-unsigned long lastScan = 0;
-boolean scanning = false;
 
 void bleScanComplete(BLEScanResults r) {
   Serial.println("BLE scan complete.");
@@ -252,14 +314,6 @@ void reconnect_mqtt() {
       pubSubClient.subscribe("am43/all/set");
       pubSubClient.subscribe("am43/all/set_position");
       pubSubClient.loop();
-      // Re-subscribe any Am43 clients.
-      auto cls = getClients();
-      for (auto const& c : cls) {
-        if (c.second->client->m_Connected) {
-          c.second->onConnect(c.second->client);
-          pubSubClient.loop();
-        }
-      }
     } else {
       Serial.print("failed, rc=");
       Serial.print(pubSubClient.state());
@@ -268,33 +322,6 @@ void reconnect_mqtt() {
       nextMqttAttempt = millis() + 5000;
     }
   }
-}
-
-std::vector<BLEAddress> allowList;
-
-void parseAllowList() {
-  std::string allowListStr = std::string(DEVICE_ALLOWLIST);
-  if (allowListStr.length() == 0) return;
-  size_t idx1 = 0;
-
-  for(;;) {
-    auto idx = allowListStr.find(',', idx1);
-    if (idx == std::string::npos) break;
-    allowList.push_back(BLEAddress(allowListStr.substr(idx1, idx-idx1)));
-    idx1 = idx+1;
-  }
-  allowList.push_back(BLEAddress(allowListStr.substr(idx1)));
-  Serial.println("AllowList contains the following device(s):");
-  for (auto dev : allowList)
-    Serial.printf(" Mac: %s \n", dev.toString().c_str());
-}
-
-bool isAllowed(BLEAddress address) {
-  if (allowList.size() < 1) return true;
-  for (auto a : allowList) {
-    if (a.equals(address)) return true;
-  }
-  return false;
 }
 
 bool otaUpdating = false;
@@ -368,7 +395,10 @@ void loop() {
         c.second->client->connectToServer(notifyCallback);
         break;  // Connect takes some time, so break out to allow other processing.
       }
-      if (c.second->client->m_Connected) c.second->client->update();
+      if (c.second->client->m_Connected) {
+        c.second->client->update();
+        c.second->handle();
+      }
       if (c.second->client->m_Disconnected) removeList.push_back(c.first);
     }
     // Remove any clients that have been disconnected.
