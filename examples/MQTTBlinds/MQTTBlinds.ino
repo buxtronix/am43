@@ -280,7 +280,7 @@ void parseAllowList() {
   for(;;) {
     auto idx = allowListStr.find(',', idx1);
     if (idx == std::string::npos) break;
-    allowList.push_back(BLEAddress(allowListStr.substr(idx1, idx)));
+    allowList.push_back(BLEAddress(allowListStr.substr(idx1, idx-idx1)));
     idx1 = idx+1;
   }
   allowList.push_back(BLEAddress(allowListStr.substr(idx1)));
