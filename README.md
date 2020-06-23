@@ -198,13 +198,15 @@ cover:
 sensor:
   - platform: mqtt
     name: "Bedroom right blind battery"
+    availability_topic: "am43/02:69:32:f2:c4:1d/available"
     state_topic: "am43/02:69:32:f2:c4:1d/battery"
     unit_of_measurement: "%"
     device_class: battery
 
   - platform: mqtt
-    name: "Bedroom left blind light"
+    name: "Bedroom right blind light"
     state_topic: "am43/02:69:32:f2:c4:1d/light"
+    availability_topic: "am43/02:69:32:f2:c4:1d/available"
     unit_of_measurement: "%"
     device_class: illuminance
 
