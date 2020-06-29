@@ -79,6 +79,7 @@ class MyAM43Callbacks: public AM43Callbacks {
     void onBatteryLevel(uint8_t level) {
       Serial.printf("[%s] Got battery: %d\r\n", rmtAddress().toString().c_str(), level);
       this->mqtt->publish(topic("battery").c_str(), String(level).c_str(), false);
+//      this->mqtt->publish(topic("heap_free").c_str(), String(xPortGetFreeHeapSize()).c_str(), false);
     }
     void onLightLevel(uint8_t level) {
       Serial.printf("[%s] Got light: %d\r\n", rmtAddress().toString().c_str(), level);
@@ -100,6 +101,7 @@ class MyAM43Callbacks: public AM43Callbacks {
         this->mqtt->loop();
         this->mqtt->disconnect();
       }
+      delete this->mqtt;
       this->mqtt = nullptr;
     }
 
@@ -404,6 +406,7 @@ void loop() {
     // Remove any clients that have been disconnected.
     for (auto i : removeList) {
       clientListSem.take("clientRemove");
+      delete allClients[i];
       allClients.erase(i);
       clientListSem.give();
     }
@@ -412,7 +415,8 @@ void loop() {
   }
   // Start a new scan every 60s.
   if (millis() - lastScan > 60000 && !otaUpdating) {
-    initBLEScan();
+    scanning = true;
+    BLEDevice::getScan()->start(10, bleScanComplete, false);
     lastScan = millis();
   }
 
