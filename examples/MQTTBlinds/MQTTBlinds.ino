@@ -450,7 +450,7 @@ void loop() {
     lastAM43update = millis();
   }
   // Start a new scan every 60s.
-  if (millis() - lastScan > 30000 && !otaUpdating && !scanning) {
+  if (millis() - lastScan > 60000 && !otaUpdating && !scanning) {
     scanning = true;
     pBLEScan->start(10, bleScanComplete, false);
     lastScan = millis();
