@@ -5,7 +5,8 @@
 A library and example sketch that allows you to control AM43 style blind controllers
 using an ESP32 device's built-in Bluetooth radio.
 
-Included is an example sketch to perform control and monitoring via MQTT.
+Included is an example sketch to perform control and monitoring via MQTT, including
+auto-discovery for Home Assistant.
 
 These blind and rollershade controllers are sold under various names, including
 Zemismart, A-OK and all use the "Blind Engine" app.
@@ -16,6 +17,9 @@ Feel free to send PRs.
  
 This sketch will scan for and auto-connect to any AM43 devices in range, then provide
 MQTT topics to control and get status from them.
+
+For Home Assisant, auto-discovery is supported so connected AM43 devices will
+show up as entities. See below for simple setup.
 
 Note that the Arduino ESP32 integration only supports connecting to a maximum of 3
 bluetooth devices. See below if you have more.
@@ -87,7 +91,13 @@ case ESP_GATTC_CONNECT_EVT: {
 
 ```
 
-Next, you need to find the file <b>esp32-hal-bt.c</b> and make the following changes:
+Next, find BLEScan.cpp, and add the following on line ~28 in the Constructor:
+
+```
+    m_scan_params.scan_duplicate     = BLE_SCAN_DUPLICATE_DISABLE;
+```
+
+Finally, you need to find the file <b>esp32-hal-bt.c</b> and make the following changes:
 
 ```
 // Change the mode to BLE only on the following line:
@@ -176,6 +186,24 @@ additional ESP32 proxies with this code, each setup with a separate allow
 list as above.
 
 ## Home Assistant configuration
+
+### With auto-discovery
+
+Ref: [Home Assistant Auto Discovery](https://www.home-assistant.io/docs/mqtt/discovery/)
+
+If you have enabled auto-discovery in *config.h* as well as in Home Assistant,
+then once your blinds are setup and the sketch has connected, you will see them
+appear in the entity list under *Configuration->Entities* either by the device name
+or mac address.
+
+It's easy to add them to the Lovelace dashboard - create a new Entities Card and
+find the entities matching your device names (this is the name configured in the
+Blinds Engine app), or the MAC address. There will be three entities per AM43
+device - one cover and two sensors for the battery and light levels.
+
+Check the *config.h* file for other related options.
+
+### Without auto-discovery
 
 The MQTT topics are set to integrate natively with Home Assistant. Once both
 are talking to the MQTT server, add the following configuration for each

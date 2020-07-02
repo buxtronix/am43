@@ -76,6 +76,20 @@ BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length
       break;
     }
     case AM43_COMMAND_GET_POSITION: {
+/*
+ * Bytes in this packet are:
+ *  3: Configuration flags, bits are:
+ *    1: direction
+ *    2: operation mode
+ *    3: top limit set
+ *    4: bottom limit set
+ *    5: has light sensor
+ *  4: Speed setting
+ *  5: Current position
+ *  6,7: Shade length.
+ *  8: Roller diameter.
+ *  9: Roller type.
+ */
       this->m_OpenLevel = pData[5];
       if (this->m_ClientCallbacks != nullptr)
         this->m_ClientCallbacks->onPosition(this->m_OpenLevel);

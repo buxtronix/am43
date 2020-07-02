@@ -48,6 +48,23 @@ void mqtt_callback(char* top, byte* pay, unsigned int length);
 
 unsigned long lastScan = 0;
 boolean scanning = false;
+BLEScan* pBLEScan;
+
+const char discTopicTmpl[] PROGMEM = "homeassistant/cover/%s/config";
+const char discPayloadTmpl[] PROGMEM = " { \"cmd_t\": \"~/set\", \"pos_t\": \"~/position\","
+    "\"pos_open\": 2, \"pos_clsd\": 99, \"set_pos_t\": \"~/set_position\","
+    "\"avty_t\": \"~/available\", \"pl_avail\": \"online\", \"pl_not_avail\": \"offline\","
+    "\"dev_cla\": \"%s\", \"name\": \"%s\", \"uniq_id\": \"%s_am43_cover\", \"~\": \"am43/%s\"}";
+
+const char discBattTopicTmpl[] PROGMEM = "homeassistant/sensor/%s_Battery/config";
+const char discBattPayloadTmpl[] PROGMEM = " { \"device_class\": \"battery\","
+    "\"name\":\"%s Battery\", \"stat_t\": \"~/battery\", \"unit_of_meas\": \"%%\","
+    "\"avty_t\": \"~/available\", \"uniq_id\": \"%s_am43_battery\", \"~\": \"am43/%s\"}";
+
+const char discLightTopicTmpl[] PROGMEM = "homeassistant/sensor/%s_Light/config";
+const char discLightPayloadTmpl[] PROGMEM = " { \"device_class\": \"illuminance\","
+    "\"name\":\"%s Light\", \"stat_t\": \"~/light\", \"unit_of_meas\": \"%%\","
+    "\"avty_t\": \"~/available\", \"uniq_id\": \"%s_am43_light\", \"~\": \"am43/%s\"}";
 
 class MyAM43Callbacks: public AM43Callbacks {
   public:
@@ -55,46 +72,57 @@ class MyAM43Callbacks: public AM43Callbacks {
     WiFiClient wifiClient;
     PubSubClient *mqtt;
     unsigned long nextMqttAttempt;
+    String rmtAddress;
+    String deviceName;
+    String mqttName;
 
-    BLEAddress rmtAddress() {
-      return client->m_Device->getAddress();
+    ~MyAM43Callbacks() {
+      delete this->client;
+      delete this->mqtt;
     }
 
     String topic(char *t) {
       char top[64];
-#ifdef AM43_USE_NAME_FOR_TOPIC
-      sprintf(top, "%s/%s/%s", MQTT_TOPIC_PREFIX, client->m_Name.c_str(), t);
-#else
-      sprintf(top, "%s/%s/%s", MQTT_TOPIC_PREFIX, client->m_Device->getAddress().toString().c_str(), t);
-#endif
+      sprintf(top, "%s/%s/%s", MQTT_TOPIC_PREFIX, this->mqttName.c_str(), t);
       String ret = String(top);
-      //ret.replace(":", "");
       return ret;
     }
 
     void onPosition(uint8_t pos) {
-      Serial.printf("[%s] Got position: %d\r\n", rmtAddress().toString().c_str(), pos);
+#ifdef AM43_INVERT_DIRECTION
+      pos = 100 - pos;
+#endif
+      Serial.printf("[%s] Got position: %d\r\n", this->rmtAddress.c_str(), pos);
       this->mqtt->publish(topic("position").c_str(), String(pos).c_str(), false);
     }
     void onBatteryLevel(uint8_t level) {
-      Serial.printf("[%s] Got battery: %d\r\n", rmtAddress().toString().c_str(), level);
+      Serial.printf("[%s] Got battery: %d\r\n", this->rmtAddress.c_str(), level);
       this->mqtt->publish(topic("battery").c_str(), String(level).c_str(), false);
 //      this->mqtt->publish(topic("heap_free").c_str(), String(xPortGetFreeHeapSize()).c_str(), false);
     }
     void onLightLevel(uint8_t level) {
-      Serial.printf("[%s] Got light: %d\r\n", rmtAddress().toString().c_str(), level);
+      Serial.printf("[%s] Got light: %d\r\n", this->rmtAddress.c_str(), level);
       this->mqtt->publish(topic("light").c_str(), String(level).c_str(), false);
     }
     void onConnect(AM43Client *c) {
-      Serial.printf("[%s] Connected\r\n", rmtAddress().toString().c_str());
       this->mqtt = new PubSubClient(this->wifiClient);
       this->nextMqttAttempt = 0;
       this->mqtt->setServer(mqtt_server, 1883);
       this->mqtt->setCallback(mqtt_callback);
-      lastScan = millis()-60000; // Trigger a new scan after connection.
+      this->mqtt->setBufferSize(512);
+      this->rmtAddress = String(c->m_Device->getAddress().toString().c_str());
+      this->rmtAddress.replace(":", "");
+      this->deviceName = String(client->m_Name.c_str());
+#ifdef AM43_USE_NAME_FOR_TOPIC
+      this->mqttName = this->deviceName;
+#else
+      this->mqttName = this->rmtAddress;
+#endif
+      lastScan = millis()-58000; // Trigger a new scan shortly after connection.
+      Serial.printf("[%s] Connected\r\n", this->rmtAddress.c_str());
     }
     void onDisconnect(AM43Client *c) {
-      Serial.printf("[%s] Disconnected\r\n", rmtAddress().toString().c_str());
+      Serial.printf("[%s] Disconnected\r\n", this->rmtAddress.c_str());
       if (this->mqtt != nullptr && this->mqtt->connected()) {
         // Publish offline availability as LWT is only for ungraceful disconnect.
         this->mqtt->publish(topic("available").c_str(), "offline", true);
@@ -122,6 +150,23 @@ class MyAM43Callbacks: public AM43Callbacks {
       this->mqtt->publish(topic("available").c_str(), "online", true);
       this->mqtt->subscribe(topic("set").c_str());
       this->mqtt->subscribe(topic("set_position").c_str());
+
+#ifdef AM43_ENABLE_MQTT_DISCOVERY
+      char discTopic[128];
+      char discPayload[300];
+
+      sprintf(discTopic, discTopicTmpl, this->mqttName.c_str());
+      sprintf(discPayload, discPayloadTmpl, AM43_MQTT_DEVICE_CLASS, this->deviceName.c_str(), this->rmtAddress.c_str(), this->mqttName.c_str());
+      this->mqtt->publish(discTopic, discPayload, true);
+
+      sprintf(discTopic, discBattTopicTmpl, this->mqttName.c_str());
+      sprintf(discPayload, discBattPayloadTmpl, this->deviceName.c_str(), this->rmtAddress.c_str(), this->mqttName.c_str());
+      this->mqtt->publish(discTopic, discPayload, true);
+
+      sprintf(discTopic, discLightTopicTmpl, this->mqttName.c_str());
+      sprintf(discPayload, discLightPayloadTmpl, this->deviceName.c_str(), this->rmtAddress.c_str(), this->mqttName.c_str());
+      this->mqtt->publish(discTopic, discPayload, true);
+#endif
       this->mqtt->loop();
     }
 };
@@ -172,11 +217,7 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
 
   for (auto const& c : cls) {
     auto cl = c.second->client;
-#ifdef AM43_USE_NAME_FOR_TOPIC
-    if (String(cl->m_Name.c_str()) == address || address == "all") {
-#else
-    if (String(cl->m_Device->getAddress().toString().c_str()) == address || address == "all") {
-#endif
+    if (c.second->mqttName == address || address == "all") {
       if (command == "set") {
         payload.toLowerCase();
         if (payload == "open") cl->open();
@@ -184,7 +225,11 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
         if (payload == "stop") cl->stop();
       }
       if (command == "set_position") {
+#ifdef AM43_INVERT_DIRECTION
+        cl->setPosition(100 - payload.toInt());
+#else
         cl->setPosition(payload.toInt());
+#endif
       }
     }
   }
@@ -232,12 +277,12 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       auto cls = getClients();
       for (auto const& c : cls) {
         if (!c.first.compare(advertisedDevice.toString())) {
-          Serial.printf("Ignoring advertising device %s, already present\r\n", advertisedDevice.toString());
+          Serial.printf("Ignoring advertising device %s, already present\r\n", advertisedDevice.toString().c_str());
           return;
         }
       }
       if (!isAllowed(advertisedDevice.getAddress())) {
-        Serial.printf("Ignoring device %s, not in allow list", advertisedDevice.toString());
+        Serial.printf("Ignoring device %s, not in allow list", advertisedDevice.toString().c_str());
         return;
       }
       AM43Client* newClient = new AM43Client(new BLEAdvertisedDevice(advertisedDevice), am43Pin);
@@ -249,8 +294,8 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       clientListSem.take("clientInsert");
       allClients.insert({advertisedDevice.toString(), cbs});
       clientListSem.give();
-      BLEDevice::getScan()->stop();
-      scanning = false;
+      //pBLEScan->stop();
+      //scanning = false;
     } // Found our server
   } // onResult
 }; // MyAdvertisedDeviceCallbacks
@@ -265,13 +310,12 @@ void initBLEScan() {
   // have detected a new device.  Specify that we want active scanning and start the
   // scan to run for 5 seconds.
     scanning = true;
-    BLEScan* pBLEScan = BLEDevice::getScan();
+    pBLEScan = BLEDevice::getScan();
     pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-    pBLEScan->setInterval(500);
-    pBLEScan->setWindow(50);
+    pBLEScan->setInterval(150);
+    pBLEScan->setWindow(99);
     pBLEScan->setActiveScan(true);
     pBLEScan->start(10, bleScanComplete, false);
-  
 }
 
 unsigned int wifiDownSince = 0;
@@ -349,7 +393,7 @@ void setup() {
       Serial.println("Start updating " + type);
       // Stop any active BLEScan during OTA - improves stability.
       otaUpdating = true;
-      BLEDevice::getScan()->stop();
+      pBLEScan->stop();
     })
     .onEnd([]() {
       Serial.println("\nEnd");
@@ -414,9 +458,9 @@ void loop() {
     lastAM43update = millis();
   }
   // Start a new scan every 60s.
-  if (millis() - lastScan > 60000 && !otaUpdating) {
+  if (millis() - lastScan > 30000 && !otaUpdating && !scanning) {
     scanning = true;
-    BLEDevice::getScan()->start(10, bleScanComplete, false);
+    pBLEScan->start(10, bleScanComplete, false);
     lastScan = millis();
   }
 
