@@ -1,7 +1,5 @@
 # AM43 blind controller library for ESP32
 
-***Update June 18: The code is now structured as a library, see 'Getting started' instructions below***
-
 A library and example sketch that allows you to control AM43 style blind controllers
 using an ESP32 device's built-in Bluetooth radio.
 
@@ -126,7 +124,8 @@ have multiple ESP controllers or have the device app (Blind Engine) running at
 the same time.
 
 You should perform initial setup of your AM43 devices with the native app
-before running this gateway.
+before running this gateway. This includes setting the device name and motor
+direction.
 
 Lots of information is printed over the serial console. Connect to your ESP32 device
 at 115200 baud and there should be plenty of chatter.
@@ -137,20 +136,20 @@ client. For example, using mosquitto_sub, you can watch activity with:
 ```
 $ mosquitto_sub -h <mqtt_server> -v -t am43/#
 am43/LWT Online
-am43/02:69:32:f2:c4:1d/available online
-am43/02:69:32:f2:c4:1d/position 0
-am43/02:69:32:f2:c4:1d/battery 70
-am43/02:69:32:f2:c4:1d/light 49
-am43/02:4d:45:f0:5b:2e/available online
-am43/02:4d:45:f0:5b:2e/battery 100
-am43/02:4d:45:f0:5b:2e/position 0
-am43/02:4d:45:f0:5b:2e/light 68
+am43/026932f2c41d/available online
+am43/026932f2c41d/position 0
+am43/026932f2c41d/battery 70
+am43/026932f2c41d/light 49
+am43/024d45f05b2e/available online
+am43/024d45f05b2e/battery 100
+am43/024d45f05b2e/position 0
+am43/024d45f05b2e/light 68
 ```
 
 It's trivial to then control the shades similarly:
 
 ```
-$ mosquitto_sub -h <mqtt_server> -t am43/02:69:32:f2:c4:1d/set -m OPEN
+$ mosquitto_sub -h <mqtt_server> -t am43/026932f2c41d/set -m OPEN
 ```
 
 You can also control all in unison:
@@ -214,10 +213,10 @@ cover:
   - platform: mqtt
     name: "Bedroom right"
     device_class: "shade"
-    command_topic: "am43/02:69:32:f2:c4:1d/set"
-    position_topic: "am43/02:69:32:f2:c4:1d/position"
-    set_position_topic: "am43/02:69:32:f2:c4:1d/set_position"
-    availability_topic: "am43/02:69:32:f2:c4:1d/available"
+    command_topic: "am43/026932f2c41d/set"
+    position_topic: "am43/026932f2c41d/position"
+    set_position_topic: "am43/026932f2c41d/set_position"
+    availability_topic: "am43/026932f2c41d/available"
 # Devices dont always report 0, open might be 0, 1 or 2.
     position_open: 2
 # Devices dont always report 100, closed might be 99 or 100.
@@ -226,15 +225,15 @@ cover:
 sensor:
   - platform: mqtt
     name: "Bedroom right blind battery"
-    availability_topic: "am43/02:69:32:f2:c4:1d/available"
-    state_topic: "am43/02:69:32:f2:c4:1d/battery"
+    availability_topic: "am43/026932f2c41d/available"
+    state_topic: "am43/026932f2c41d/battery"
     unit_of_measurement: "%"
     device_class: battery
 
   - platform: mqtt
     name: "Bedroom right blind light"
-    state_topic: "am43/02:69:32:f2:c4:1d/light"
-    availability_topic: "am43/02:69:32:f2:c4:1d/available"
+    state_topic: "am43/026932f2c41d/light"
+    availability_topic: "am43/026932f2c41d/available"
     unit_of_measurement: "%"
     device_class: illuminance
 

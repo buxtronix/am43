@@ -1,8 +1,8 @@
 // Your Wifi SSID.
-#define WIFI_SSID "your_wifi_ssid"
+#define WIFI_SSID "wifi_ssid"
 
 // Wifi password.
-#define WIFI_PASSWORD "your_wifi_password"
+#define WIFI_PASSWORD "wifi_password"
 
 // MQTT server details.
 #define MQTT_ADDRESS "192.168.0.88"
@@ -24,13 +24,6 @@
 // Currently don't support per-device class.
 #define AM43_MQTT_DEVICE_CLASS "shade"
 
-// If HomeAssistant is reporting inverted positions (ie it reports
-// open when closed, etc), then uncomment this to invert them. This
-// would typically be due to the motor direction setting in the
-// Blinds Engine app.
-// TODO: Auto-detect this from the device settings.
-//#define AM43_INVERT_DIRECTION
-
 // PIN for the AM43 device (printed on it, default is 8888)
 #define AM43_PIN 8888
 
@@ -51,4 +44,3 @@
 #ifdef AM43_ENABLE_MQTT_DISCOVERY
 #undef AM43_USE_NAME_FOR_TOPIC
 #endif
-

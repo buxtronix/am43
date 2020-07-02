@@ -21,6 +21,7 @@ AM43Client::AM43Client(BLEAdvertisedDevice *d, uint16_t pin) {
   this->m_Pin = pin;
   this->m_BatteryPercent = 0xff;
   this->m_ClientCallbacks = nullptr;
+  this->m_CurrentQuery = 0;
 }
 
 void AM43Client::onConnect(BLEClient* pclient) {
@@ -107,6 +108,8 @@ BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length
       if (pData[3] == AM43_RESPONSE_ACK) {
         this->m_LoggedIn = true;
         Serial.printf("[%s] Pin ok\r\n", deviceString().c_str());
+        // Trigger a fetch in 1s;
+        this->m_LastUpdate = millis() - AM43_UPDATE_INTERVAL + 1000;
       } else if (pData[3] == AM43_RESPONSE_NACK) {
         Serial.printf("[%s] Pin incorrect\r\n", deviceString().c_str());
         this->m_LoggedIn = false;
@@ -194,10 +197,10 @@ void AM43Client::update() {
     }
     switch(this->m_CurrentQuery++) {
       case 0:
-      this->sendGetBatteryRequest();
+      this->sendGetPositionRequest();
       break;
       case 1:
-      this->sendGetPositionRequest();
+      this->sendGetBatteryRequest();
       break;
       case 2:
       this->sendGetLightRequest();

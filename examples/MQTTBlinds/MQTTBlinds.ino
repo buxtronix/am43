@@ -18,7 +18,7 @@
  * - am43/<device>/set_position - Set the blind position, between 0 and 100.
  * - am43/restart               - Reboot this service.
  *
- * <device> is the bluetooth mac address of the device, eg 02:69:32:f0:c5:1d
+ * <device> is the bluetooth mac address of the device, eg 026932f0c51d
  *
  * For the position set commands, you can use name 'all' to change all devices.
  * 
@@ -89,9 +89,6 @@ class MyAM43Callbacks: public AM43Callbacks {
     }
 
     void onPosition(uint8_t pos) {
-#ifdef AM43_INVERT_DIRECTION
-      pos = 100 - pos;
-#endif
       Serial.printf("[%s] Got position: %d\r\n", this->rmtAddress.c_str(), pos);
       this->mqtt->publish(topic("position").c_str(), String(pos).c_str(), false);
     }
@@ -224,13 +221,8 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
         if (payload == "close") cl->close();
         if (payload == "stop") cl->stop();
       }
-      if (command == "set_position") {
-#ifdef AM43_INVERT_DIRECTION
-        cl->setPosition(100 - payload.toInt());
-#else
+      if (command == "set_position")
         cl->setPosition(payload.toInt());
-#endif
-      }
     }
   }
 }
