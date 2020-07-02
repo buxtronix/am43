@@ -340,18 +340,22 @@ void setup_wifi() {
 
 unsigned long nextMqttAttempt = 0;
 
+String topPrefix(const char *top) {
+  String ret = String(MQTT_TOPIC_PREFIX) + top;
+  return ret;
+}
 void reconnect_mqtt() {
   if (WiFi.status() == WL_CONNECTED && millis() > nextMqttAttempt) {
     Serial.print("Attempting MQTT connection...");
     String mqttPrefix = String(MQTT_TOPIC_PREFIX);
     // Attempt to connect
-    if (pubSubClient.connect(mqttPrefix + "-gateway", MQTT_USERNAME, MQTT_PASSWORD, mqttPrefix + "/LWT", 0, false, "Offline")) {
+    if (pubSubClient.connect(topPrefix("-gateway").c_str(), MQTT_USERNAME, MQTT_PASSWORD, topPrefix("/LWT").c_str(), 0, false, "Offline")) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      pubSubClient.publish(mqttPrefix + "/LWT", "Online", true);
-      pubSubClient.subscribe(mqttPrefix + "/restart");
-      pubSubClient.subscribe(mqttPrefix + "/all/set");
-      pubSubClient.subscribe(mqttPrefix + "/all/set_position");
+      pubSubClient.publish(topPrefix("/LWT").c_str(), "Online", true);
+      pubSubClient.subscribe(topPrefix("/restart").c_str());
+      pubSubClient.subscribe(topPrefix("/all/set").c_str());
+      pubSubClient.subscribe(topPrefix("/all/set_position").c_str());
       pubSubClient.loop();
     } else {
       Serial.print("failed, rc=");
