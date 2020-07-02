@@ -343,14 +343,15 @@ unsigned long nextMqttAttempt = 0;
 void reconnect_mqtt() {
   if (WiFi.status() == WL_CONNECTED && millis() > nextMqttAttempt) {
     Serial.print("Attempting MQTT connection...");
+    String mqttPrefix = String(MQTT_TOPIC_PREFIX);
     // Attempt to connect
-    if (pubSubClient.connect("am43-gateway", MQTT_USERNAME, MQTT_PASSWORD, "am43/LWT", 0, false, "Offline")) {
+    if (pubSubClient.connect(mqttPrefix + "-gateway", MQTT_USERNAME, MQTT_PASSWORD, mqttPrefix + "/LWT", 0, false, "Offline")) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      pubSubClient.publish("am43/LWT", "Online", true);
-      pubSubClient.subscribe("am43/restart");
-      pubSubClient.subscribe("am43/all/set");
-      pubSubClient.subscribe("am43/all/set_position");
+      pubSubClient.publish(mqttPrefix + "/LWT", "Online", true);
+      pubSubClient.subscribe(mqttPrefix + "/restart");
+      pubSubClient.subscribe(mqttPrefix + "/all/set");
+      pubSubClient.subscribe(mqttPrefix + "/all/set_position");
       pubSubClient.loop();
     } else {
       Serial.print("failed, rc=");
