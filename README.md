@@ -70,7 +70,7 @@ which cause significant instability issues. A patch will been submitted to
 the BLE maintainers, though if it's not yet in your release, you will need
 to make the following changes, which result in a massive stability gain:
 
-Find <b>BLEClient.cpp</b> in your installation, and make the following change.
+Find <b>BLEClient.cpp</b> in your installation, and make the following changes.
 
 ```
 // Search for the following block, around line 180 and add the line.
@@ -81,11 +81,12 @@ case ESP_GATTC_DISCONNECT_EVT: {
   // no longer connected.
   m_isConnected = false;
 
-// Also add another line around line 238.
+// Also two changes around line 238.
 
 case ESP_GATTC_CONNECT_EVT: {
   if (evtParam->connect.conn_id != getConnId()) break;  // <- ADD THIS LINE
-  BLEDevice::updatePeerDevice(this, true, m_gattc_if);
+  BLEDevice::updatePeerDevice(this, true, m_appId);  
+//                                        ^^^^^^^ CHANGE THIS PARAMETER.
 
 ```
 
