@@ -277,6 +277,10 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
         Serial.printf("Ignoring device %s, not in allow list", advertisedDevice.toString().c_str());
         return;
       }
+      if (cls.size() >= BLE_MAX_CONN) {
+        Serial.printf("ERROR: Already connected to %d devices, Arduino cannot connect to any more.", cls.size());
+        return;
+      }
       AM43Client* newClient = new AM43Client(new BLEAdvertisedDevice(advertisedDevice), am43Pin);
       newClient->m_DoConnect = true;
       newClient->m_Name = advertisedDevice.getName();

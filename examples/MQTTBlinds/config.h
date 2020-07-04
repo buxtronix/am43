@@ -44,3 +44,7 @@
 #ifdef AM43_ENABLE_MQTT_DISCOVERY
 #undef AM43_USE_NAME_FOR_TOPIC
 #endif
+
+// Maximum number of connected devices. This should not be raised unless the Arduino
+// BLE stack is also modified as it has this limit also.
+#define BLE_MAX_CONN 3
