@@ -25,14 +25,16 @@
  * Arduino OTA update is supported.
  */
 
+#include "config.h"
+#ifdef ENABLE_ARDUINO_OTA
 #include <ArduinoOTA.h>
+#endif
 #include <WiFi.h>
 #include <WiFiClient.h>
 
 #include <PubSubClient.h>
 #include <AM43Client.h>
 #include <BLEDevice.h>
-#include "config.h"
 
 const char *ssid = WIFI_SSID;
 const char *password = WIFI_PASSWORD;
@@ -382,6 +384,7 @@ void setup() {
 
   parseAllowList();
   
+#ifdef ENABLE_ARDUINO_OTA
   ArduinoOTA
     .onStart([]() {
       String type;
@@ -413,8 +416,9 @@ void setup() {
       otaUpdating = false;
     });
 
-  otaUpdating = false;
   ArduinoOTA.begin();
+#endif
+  otaUpdating = false;
   esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
   BLEDevice::init("");
   initBLEScan();
@@ -465,6 +469,8 @@ void loop() {
     lastScan = millis();
   }
 
+#ifdef ENABLE_ARDUINO_OTA
   ArduinoOTA.handle();
+#endif
 
 } // End of loop

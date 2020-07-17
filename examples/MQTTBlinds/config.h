@@ -38,7 +38,10 @@
 #define DEVICE_ALLOWLIST ""
 //#define DEVICE_ALLOWLIST "11:22:33:44:55:66"
 //#define DEVICE_ALLOWLIST "11:22:33:44:55:66,AA:BB:CC:DD:EE:FF"
-//
+
+// Comment out below to disable the OTA feature, especially if you have
+// stability problems.
+#define ENABLE_ARDUINO_OTA
 
 // LEAVE BELOW UNTOUCHED
 #ifdef AM43_ENABLE_MQTT_DISCOVERY
