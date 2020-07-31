@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.3.1] - 2020-07-31
+ - Fix light level
+
 ## [0.3.0] - 2020-07-17
 
  - Fixes to MQTT topic prefixes.

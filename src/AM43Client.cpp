@@ -98,7 +98,7 @@ BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length
     }
 
     case AM43_COMMAND_GET_LIGHT: {
-      this->m_LightLevel = pData[5];
+      this->m_LightLevel = ((float)pData[4]*100/9);
       if (this->m_ClientCallbacks != nullptr)
         this->m_ClientCallbacks->onLightLevel(this->m_LightLevel);
       break;
