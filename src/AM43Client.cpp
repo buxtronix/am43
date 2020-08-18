@@ -21,7 +21,7 @@ AM43Client::AM43Client(BLEAdvertisedDevice *d, uint16_t pin) {
   this->m_Pin = pin;
   this->m_BatteryPercent = 0xff;
   this->m_ClientCallbacks = nullptr;
-  this->m_CurrentQuery = 0;
+  this->m_CurrentQuery = 1;
 }
 
 void AM43Client::onConnect(BLEClient* pclient) {
@@ -195,19 +195,15 @@ void AM43Client::update() {
       this->sendPin();
       return;
     }
-    switch(this->m_CurrentQuery++) {
-      case 0:
-      this->sendGetPositionRequest();
-      break;
-      case 1:
-      this->sendGetBatteryRequest();
-      break;
-      case 2:
-      this->sendGetLightRequest();
-      break;
-    }
-    if (this->m_CurrentQuery > 2) this->m_CurrentQuery = 0;
 
+    if (AM43_UPDATE_BATTERY == 1 && this->m_CurrentQuery == AM43_UPDATE_BATTERY)
+      this->sendGetBatteryRequest();
+    else if (AM43_UPDATE_POSITION == 1 && this->m_CurrentQuery == AM43_UPDATE_BATTERY + AM43_UPDATE_POSITION)
+      this->sendGetPositionRequest();
+    else if (AM43_UPDATE_BATTERY == 1 && this->m_CurrentQuery == AM43_UPDATE_BATTERY + AM43_UPDATE_POSITION + AM43_UPDATE_LIGHT)
+      this->sendGetLightRequest();
+
+    this->m_CurrentQuery = this->m_CurrentQuery + 1 > AM43_UPDATE_BATTERY + AM43_UPDATE_POSITION + AM43_UPDATE_LIGHT ? 1 : this->m_CurrentQuery + 1;
     this->m_LastUpdate = millis();
   }
 }

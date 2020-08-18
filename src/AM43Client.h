@@ -19,7 +19,10 @@
 #define AM43_RESPONSE_NACK 0xA5
 #define AM43_DEFAULT_PIN 8888
 
-#define AM43_UPDATE_INTERVAL 30000  // Frequency to poll battery/position.
+#define AM43_UPDATE_INTERVAL 30000  // Frequency to poll battery/position/light.
+#define AM43_UPDATE_BATTERY 1  // Update battery?
+#define AM43_UPDATE_POSITION 1  // Update position?
+#define AM43_UPDATE_LIGHT 1  // Update light?
 
 extern BLEUUID serviceUUID;
 extern BLEUUID    charUUID;
