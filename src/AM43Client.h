@@ -58,6 +58,7 @@ class AM43Client : public BLEClientCallbacks {
     void myNotifyCallback(BLERemoteCharacteristic*, uint8_t*, size_t, bool);
   
     boolean connectToServer(notify_callback);
+    void disconnectFromServer();
 
     void sendGetBatteryRequest();
     void sendGetLightRequest();

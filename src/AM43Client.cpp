@@ -282,3 +282,7 @@ boolean AM43Client::connectToServer(notify_callback callback) {
   Serial.printf("Connect took %dms\r\n", millis()-connectStart);
   return true;
 }
+
+void AM43Client::disconnectFromServer() {
+  this->m_Client->disconnect();
+}

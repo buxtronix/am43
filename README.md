@@ -30,6 +30,7 @@ The following MQTT topis are published to:
 | am43/&lt;device>/position  | The current blind position | between 0 and 100 |
 | am43/&lt;device>/battery   | The current battery level | between 0 and 100 |
 | am43/&lt;device>/light     | The current light level | between 0 and 100 |
+| am43/enabled            | Whether the BLE client is enabled | Either "on" or "off" |
 | am43/LWT                | MQTT connection status | Either 'Online' or 'Offline' |
 
 The following MQTT topics are subscribed to:
@@ -38,6 +39,7 @@ The following MQTT topics are subscribed to:
 | ----- | ----------- | ------ |
 | am43/&lt;device>/set          | Set the blind position | 'OPEN', 'STOP' or 'CLOSE' |
 | am43/&lt;device>/set_position | Set the blind % position | between 0 and 100. |
+| am43/enable               | Enable or disable BLE connections | 'off' or 'on'.
 | am43/restart               | Reboot this service | Ignored.
 
 &lt;device> is the bluetooth mac address of the device, eg 02:69:32:f0:c5:1d
@@ -201,6 +203,30 @@ find the entities matching your device names (this is the name configured in the
 Blinds Engine app), or the MAC address. There will be three entities per AM43
 device - one cover and two sensors for the battery and light levels.
 
+There will also be a switch entity created, used to enable and disable the BLE
+connections. This can be useful to save battery power by only establishing the
+BLE connection when moving the cover. Note that it may take up to a minute to
+establish the connection so automations should add a delay between enabling the
+switch and sending a command.
+
+Example automation with only enabling BLE when changing the cover:
+
+```
+id: 'Sunrise blinds'
+  trigger:
+    - event: sunrise
+      platform: sun
+  action:
+    - entity_id: switch.am43_ble
+      service: switch.turn_on
+    - delay: 00:01
+    - entity_id: cover.bedroom
+      service: cover.open_cover
+    - delay: 00:02
+    - entity_id: switch.am43_ble
+      service: switch.turn_off
+```
+
 Check the *config.h* file for other related options.
 
 ### Without auto-discovery
@@ -237,6 +263,14 @@ sensor:
     availability_topic: "am43/026932f2c41d/available"
     unit_of_measurement: "%"
     device_class: illuminance
+
+switch:
+  - platform: mqtt
+    name: "Bedroom BLE enable"
+    command_topic: "am43/enable"
+    state_topic: "am43/enabled"
+    availability_topic: "am43/LWT"
+    icon: "mdi:bluetooth"
 
 ```
 

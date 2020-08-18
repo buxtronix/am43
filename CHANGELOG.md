@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.4.0] - 2020-08-17
+ - MQTT example adds new switch to enable/disable BLE connections.
+
 ## [0.3.1] - 2020-07-31
  - Fix light level
 

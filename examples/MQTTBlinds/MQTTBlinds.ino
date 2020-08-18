@@ -50,6 +50,7 @@ void mqtt_callback(char* top, byte* pay, unsigned int length);
 
 unsigned long lastScan = 0;
 boolean scanning = false;
+boolean bleEnabled = true; // Controlled via MQTT.
 BLEScan* pBLEScan;
 
 const char discTopicTmpl[] PROGMEM = "homeassistant/cover/%s/config";
@@ -67,6 +68,11 @@ const char discLightTopicTmpl[] PROGMEM = "homeassistant/sensor/%s_Light/config"
 const char discLightPayloadTmpl[] PROGMEM = " { \"device_class\": \"illuminance\","
     "\"name\":\"%s Light\", \"stat_t\": \"~/light\", \"unit_of_meas\": \"%%\","
     "\"avty_t\": \"~/available\", \"uniq_id\": \"%s_am43_light\", \"~\": \"am43/%s\"}";
+
+const char discSwitchTopic[] PROGMEM = "homeassistant/switch/%s_Switch/config";
+const char discSwitchPayload[] PROGMEM = " { \"icon\": \"mdi:bluetooth\","
+    "\"name\":\"%s Switch\", \"stat_t\": \"~/enabled\", \"cmd_t\": \"~/enable\","
+    "\"uniq_id\": \"%s_enabled\", \"~\": \"%s\"}";
 
 class MyAM43Callbacks: public AM43Callbacks {
   public:
@@ -205,6 +211,7 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
   String address = topic.substring(i1+1, i2);
   String command = topic.substring(i2+1);
   Serial.printf("Addr: %s Cmd: %s\r\n", address.c_str(), command.c_str());
+  payload.toLowerCase();
 
   auto cls = getClients();
   if (address == "restart") {
@@ -214,11 +221,26 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
     ESP.restart();
   }
 
+  if (address == "enable") {
+    if (payload == "off") {
+      Serial.println("Disabling BLE Clients");
+      bleEnabled = false;
+      pubSubClient.publish(topPrefix("/enabled").c_str(), "OFF", true);
+      for (auto const& c : cls) {
+        c.second->client->disconnectFromServer();
+      }
+    } else if (payload == "on") {
+      Serial.println("Enabling BLE Clients");
+      bleEnabled = true;
+      pubSubClient.publish(topPrefix("/enabled").c_str(), "ON", true);
+      lastScan = 0;
+    }
+  }
+
   for (auto const& c : cls) {
     auto cl = c.second->client;
     if (c.second->mqttName == address || address == "all") {
       if (command == "set") {
-        payload.toLowerCase();
         if (payload == "open") cl->open();
         if (payload == "close") cl->close();
         if (payload == "stop") cl->stop();
@@ -268,6 +290,10 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
     // We have found a device, let us now see if it contains the service we are looking for.
     if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID)) {
+      if (!bleEnabled) {
+        Serial.printf("BLE connections disabled, ignoring device");
+        return;
+      }
       auto cls = getClients();
       for (auto const& c : cls) {
         if (!c.first.compare(advertisedDevice.toString())) {
@@ -360,9 +386,18 @@ void reconnect_mqtt() {
       // Once connected, publish an announcement...
       pubSubClient.publish(topPrefix("/LWT").c_str(), "Online", true);
       pubSubClient.subscribe(topPrefix("/restart").c_str());
+      pubSubClient.subscribe(topPrefix("/enable").c_str());
       pubSubClient.subscribe(topPrefix("/all/set").c_str());
       pubSubClient.subscribe(topPrefix("/all/set_position").c_str());
       pubSubClient.loop();
+
+      char discTopic[128];
+      char discPayload[300];
+
+      sprintf(discTopic, discSwitchTopic, MQTT_TOPIC_PREFIX);
+      sprintf(discPayload, discSwitchPayload, MQTT_TOPIC_PREFIX, MQTT_TOPIC_PREFIX, MQTT_TOPIC_PREFIX);
+      pubSubClient.publish(discTopic, discPayload, true);
+      pubSubClient.publish(topPrefix("/enabled").c_str(), "ON", true);
     } else {
       Serial.print("failed, rc=");
       Serial.print(pubSubClient.state());
