@@ -83,6 +83,7 @@ class MyAM43Callbacks: public AM43Callbacks {
     String rmtAddress;
     String deviceName;
     String mqttName;
+    unsigned long lastBatteryMessage;
 
     ~MyAM43Callbacks() {
       delete this->client;
@@ -101,9 +102,12 @@ class MyAM43Callbacks: public AM43Callbacks {
       this->mqtt->publish(topic("position").c_str(), String(pos).c_str(), false);
     }
     void onBatteryLevel(uint8_t level) {
-      Serial.printf("[%s] Got battery: %d\r\n", this->rmtAddress.c_str(), level);
-      this->mqtt->publish(topic("battery").c_str(), String(level).c_str(), false);
-//      this->mqtt->publish(topic("heap_free").c_str(), String(xPortGetFreeHeapSize()).c_str(), false);
+      // Ignore overly frequent battery messages. AM43s are known to spam them at times.
+      if (this->lastBatteryMessage == 0 || millis() - this->lastBatteryMessage > 30000)  {
+        Serial.printf("[%s] Got battery: %d\r\n", this->rmtAddress.c_str(), level);
+        this->mqtt->publish(topic("battery").c_str(), String(level).c_str(), false);
+        this->lastBatteryMessage = millis();
+      }
     }
     void onLightLevel(uint8_t level) {
       Serial.printf("[%s] Got light: %d\r\n", this->rmtAddress.c_str(), level);
@@ -314,6 +318,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       newClient->m_Name = advertisedDevice.getName();
       MyAM43Callbacks *cbs = new MyAM43Callbacks();
       cbs->client = newClient;
+      cbs->lastBatteryMessage = 0;
       newClient->setClientCallbacks(cbs);
       clientListSem.take("clientInsert");
       allClients.insert({advertisedDevice.toString(), cbs});
