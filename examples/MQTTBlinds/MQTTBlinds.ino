@@ -6,17 +6,17 @@
  *
  * The following MQTT topis are published to:
  *
- * - am43/<device>/available - Either 'offline' or 'online'
- * - am43/<device>/position  - The current blind position, between 0 and 100
- * - am43/<device>/battery   - The current battery level, between 0 and 100
- * - am43/<device>rssi       - The current RSSI reported by the device.
- * - am43/LWT                - Either 'Online' or 'Offline', MQTT status of this service.
+ * - <prefix>/<device>/available - Either 'offline' or 'online'
+ * - <prefix>/<device>/position  - The current blind position, between 0 and 100
+ * - <prefix>/<device>/battery   - The current battery level, between 0 and 100
+ * - <prefix>/<device>rssi       - The current RSSI reported by the device.
+ * - <prefix>/LWT                - Either 'Online' or 'Offline', MQTT status of this service.
  *
  * The following MQTT topics are subscribed to:
  *
- * - am43/<device>/set          - Set the blind to 'OPEN', 'STOP' or 'CLOSE'
- * - am43/<device>/set_position - Set the blind position, between 0 and 100.
- * - am43/restart               - Reboot this service.
+ * - <prefix>/<device>/set          - Set the blind to 'OPEN', 'STOP' or 'CLOSE'
+ * - <prefix>/<device>/set_position - Set the blind position, between 0 and 100.
+ * - <prefix>/restart               - Reboot this service.
  *
  * <device> is the bluetooth mac address of the device, eg 026932f0c51d
  *
@@ -35,6 +35,11 @@
 #include <PubSubClient.h>
 #include <AM43Client.h>
 #include <BLEDevice.h>
+
+#ifdef WDT_TIMEOUT
+#include <esp_task_wdt.h>
+#endif
+
 
 const char *ssid = WIFI_SSID;
 const char *password = WIFI_PASSWORD;
@@ -57,17 +62,17 @@ const char discTopicTmpl[] PROGMEM = "homeassistant/cover/%s/config";
 const char discPayloadTmpl[] PROGMEM = " { \"cmd_t\": \"~/set\", \"pos_t\": \"~/position\","
     "\"pos_open\": 2, \"pos_clsd\": 99, \"set_pos_t\": \"~/set_position\","
     "\"avty_t\": \"~/available\", \"pl_avail\": \"online\", \"pl_not_avail\": \"offline\","
-    "\"dev_cla\": \"%s\", \"name\": \"%s\", \"uniq_id\": \"%s_am43_cover\", \"~\": \"am43/%s\"}";
+    "\"dev_cla\": \"%s\", \"name\": \"%s\", \"uniq_id\": \"%s_am43_cover\", \"~\": \""  MQTT_TOPIC_PREFIX  "/%s\"}";
 
 const char discBattTopicTmpl[] PROGMEM = "homeassistant/sensor/%s_Battery/config";
 const char discBattPayloadTmpl[] PROGMEM = " { \"device_class\": \"battery\","
     "\"name\":\"%s Battery\", \"stat_t\": \"~/battery\", \"unit_of_meas\": \"%%\","
-    "\"avty_t\": \"~/available\", \"uniq_id\": \"%s_am43_battery\", \"~\": \"am43/%s\"}";
+    "\"avty_t\": \"~/available\", \"uniq_id\": \"%s_am43_battery\", \"~\": \""  MQTT_TOPIC_PREFIX  "/%s\"}";
 
 const char discLightTopicTmpl[] PROGMEM = "homeassistant/sensor/%s_Light/config";
 const char discLightPayloadTmpl[] PROGMEM = " { \"device_class\": \"illuminance\","
     "\"name\":\"%s Light\", \"stat_t\": \"~/light\", \"unit_of_meas\": \"%%\","
-    "\"avty_t\": \"~/available\", \"uniq_id\": \"%s_am43_light\", \"~\": \"am43/%s\"}";
+    "\"avty_t\": \"~/available\", \"uniq_id\": \"%s_am43_light\", \"~\": \""  MQTT_TOPIC_PREFIX  "%s\"}";
 
 const char discSwitchTopic[] PROGMEM = "homeassistant/switch/%s_Switch/config";
 const char discSwitchPayload[] PROGMEM = " { \"icon\": \"mdi:bluetooth\","
@@ -84,7 +89,6 @@ class MyAM43Callbacks: public AM43Callbacks {
     String deviceName;
     String mqttName;
     unsigned long lastBatteryMessage;
-
     ~MyAM43Callbacks() {
       delete this->client;
       delete this->mqtt;
@@ -290,27 +294,28 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
    * Called for each advertising BLE server.
    */
   void onResult(BLEAdvertisedDevice advertisedDevice) {
-    Serial.printf("BLE Advertised Device found: %s\r\n", advertisedDevice.toString().c_str());
+    if (advertisedDevice.getName().length() > 0)
+        Serial.printf("BLE Advertised Device found: %s\r\n", advertisedDevice.toString().c_str());
 
     // We have found a device, let us now see if it contains the service we are looking for.
     if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID)) {
       if (!bleEnabled) {
-        Serial.printf("BLE connections disabled, ignoring device");
+        Serial.printf("BLE connections disabled, ignoring device\r\n");
         return;
       }
       auto cls = getClients();
       for (auto const& c : cls) {
         if (!c.first.compare(advertisedDevice.toString())) {
-          Serial.printf("Ignoring advertising device %s, already present\r\n", advertisedDevice.toString().c_str());
+          //*** Serial.printf("Ignoring advertising device %s, already present\r\n", advertisedDevice.toString().c_str());
           return;
         }
       }
       if (!isAllowed(advertisedDevice.getAddress())) {
-        Serial.printf("Ignoring device %s, not in allow list", advertisedDevice.toString().c_str());
+        //*** Serial.printf("Ignoring device %s, not in allow list\r\n", advertisedDevice.toString().c_str());
         return;
       }
       if (cls.size() >= BLE_MAX_CONN) {
-        Serial.printf("ERROR: Already connected to %d devices, Arduino cannot connect to any more.", cls.size());
+        Serial.printf("ERROR: Already connected to %d devices, Arduino cannot connect to any more./r/n", cls.size());
         return;
       }
       AM43Client* newClient = new AM43Client(new BLEAdvertisedDevice(advertisedDevice), am43Pin);
@@ -330,7 +335,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 }; // MyAdvertisedDeviceCallbacks
 
 void bleScanComplete(BLEScanResults r) {
-  Serial.println("BLE scan complete.");
+  //***// Serial.println("BLE scan complete.");
   scanning = false;
 };
 
@@ -383,7 +388,7 @@ String topPrefix(const char *top) {
 }
 void reconnect_mqtt() {
   if (WiFi.status() == WL_CONNECTED && millis() > nextMqttAttempt) {
-    Serial.print("Attempting MQTT connection...");
+    Serial.print("Attempting MQTT connection...\r\n");
     String mqttPrefix = String(MQTT_TOPIC_PREFIX);
     // Attempt to connect
     if (pubSubClient.connect(topPrefix("-gateway").c_str(), MQTT_USERNAME, MQTT_PASSWORD, topPrefix("/LWT").c_str(), 0, false, "Offline")) {
@@ -462,7 +467,12 @@ void setup() {
   esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
   BLEDevice::init("");
   initBLEScan();
-} // End of setup.
+#ifdef WDT_TIMEOUT
+  Serial.println("Configuring WDT...");
+  esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
+  esp_task_wdt_add(NULL); //add current thread to WDT watch
+#endif
+ } // End of setup.
 
 unsigned long lastAM43update = 0;
 
@@ -513,4 +523,7 @@ void loop() {
   ArduinoOTA.handle();
 #endif
 
+#ifdef WDT_TIMEOUT
+  esp_task_wdt_reset();
+#endif
 } // End of loop
