@@ -306,12 +306,12 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       auto cls = getClients();
       for (auto const& c : cls) {
         if (!c.first.compare(advertisedDevice.toString())) {
-          //*** Serial.printf("Ignoring advertising device %s, already present\r\n", advertisedDevice.toString().c_str());
+          Serial.printf("Ignoring advertising device %s, already present\r\n", advertisedDevice.toString().c_str());
           return;
         }
       }
       if (!isAllowed(advertisedDevice.getAddress())) {
-        //*** Serial.printf("Ignoring device %s, not in allow list\r\n", advertisedDevice.toString().c_str());
+        Serial.printf("Ignoring device %s, not in allow list\r\n", advertisedDevice.toString().c_str());
         return;
       }
       if (cls.size() >= BLE_MAX_CONN) {
@@ -335,7 +335,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 }; // MyAdvertisedDeviceCallbacks
 
 void bleScanComplete(BLEScanResults r) {
-  //***// Serial.println("BLE scan complete.");
+  Serial.println("BLE scan complete.");
   scanning = false;
 };
 
