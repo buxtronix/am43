@@ -62,17 +62,17 @@ const char discTopicTmpl[] PROGMEM = "homeassistant/cover/%s/config";
 const char discPayloadTmpl[] PROGMEM = " { \"cmd_t\": \"~/set\", \"pos_t\": \"~/position\","
     "\"pos_open\": 2, \"pos_clsd\": 99, \"set_pos_t\": \"~/set_position\","
     "\"avty_t\": \"~/available\", \"pl_avail\": \"online\", \"pl_not_avail\": \"offline\","
-    "\"dev_cla\": \"%s\", \"name\": \"%s\", \"uniq_id\": \"%s_am43_cover\", \"~\": \""  MQTT_TOPIC_PREFIX  "/%s\"}";
+    "\"dev_cla\": \"%s\", \"name\": \"%s\", \"uniq_id\": \"%s_am43_cover\", \"~\": \"%s/%s\"}";
 
 const char discBattTopicTmpl[] PROGMEM = "homeassistant/sensor/%s_Battery/config";
 const char discBattPayloadTmpl[] PROGMEM = " { \"device_class\": \"battery\","
     "\"name\":\"%s Battery\", \"stat_t\": \"~/battery\", \"unit_of_meas\": \"%%\","
-    "\"avty_t\": \"~/available\", \"uniq_id\": \"%s_am43_battery\", \"~\": \""  MQTT_TOPIC_PREFIX  "/%s\"}";
+    "\"avty_t\": \"~/available\", \"uniq_id\": \"%s_am43_battery\", \"~\": \"%s/%s\"}";
 
 const char discLightTopicTmpl[] PROGMEM = "homeassistant/sensor/%s_Light/config";
 const char discLightPayloadTmpl[] PROGMEM = " { \"device_class\": \"illuminance\","
     "\"name\":\"%s Light\", \"stat_t\": \"~/light\", \"unit_of_meas\": \"%%\","
-    "\"avty_t\": \"~/available\", \"uniq_id\": \"%s_am43_light\", \"~\": \""  MQTT_TOPIC_PREFIX  "%s\"}";
+    "\"avty_t\": \"~/available\", \"uniq_id\": \"%s_am43_light\", \"~\": \"%s/%s\"}";
 
 const char discSwitchTopic[] PROGMEM = "homeassistant/switch/%s_Switch/config";
 const char discSwitchPayload[] PROGMEM = " { \"icon\": \"mdi:bluetooth\","
@@ -169,15 +169,15 @@ class MyAM43Callbacks: public AM43Callbacks {
       char discPayload[300];
 
       sprintf(discTopic, discTopicTmpl, this->mqttName.c_str());
-      sprintf(discPayload, discPayloadTmpl, AM43_MQTT_DEVICE_CLASS, this->deviceName.c_str(), this->rmtAddress.c_str(), this->mqttName.c_str());
+      sprintf(discPayload, discPayloadTmpl, AM43_MQTT_DEVICE_CLASS, this->deviceName.c_str(), this->rmtAddress.c_str(), MQTT_TOPIC_PREFIX, this->mqttName.c_str());
       this->mqtt->publish(discTopic, discPayload, true);
 
       sprintf(discTopic, discBattTopicTmpl, this->mqttName.c_str());
-      sprintf(discPayload, discBattPayloadTmpl, this->deviceName.c_str(), this->rmtAddress.c_str(), this->mqttName.c_str());
+      sprintf(discPayload, discBattPayloadTmpl, this->deviceName.c_str(), this->rmtAddress.c_str(), MQTT_TOPIC_PREFIX, this->mqttName.c_str());
       this->mqtt->publish(discTopic, discPayload, true);
 
       sprintf(discTopic, discLightTopicTmpl, this->mqttName.c_str());
-      sprintf(discPayload, discLightPayloadTmpl, this->deviceName.c_str(), this->rmtAddress.c_str(), this->mqttName.c_str());
+      sprintf(discPayload, discLightPayloadTmpl, this->deviceName.c_str(), this->rmtAddress.c_str(), MQTT_TOPIC_PREFIX, this->mqttName.c_str());
       this->mqtt->publish(discTopic, discPayload, true);
 #endif
       this->mqtt->loop();
