@@ -315,7 +315,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
         return;
       }
       if (cls.size() >= BLE_MAX_CONN) {
-        Serial.printf("ERROR: Already connected to %d devices, Arduino cannot connect to any more./r/n", cls.size());
+        Serial.printf("ERROR: Already connected to %d devices, Arduino cannot connect to any more.\r\n", cls.size());
         return;
       }
       AM43Client* newClient = new AM43Client(new BLEAdvertisedDevice(advertisedDevice), am43Pin);
