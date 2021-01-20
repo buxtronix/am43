@@ -5,9 +5,12 @@
 #define WIFI_PASSWORD "wifi_password"
 
 // MQTT server details.
-#define MQTT_ADDRESS "192.168.0.88"
+#define MQTT_ADDRESS "x.x.x.x"
 #define MQTT_USERNAME ""
 #define MQTT_PASSWORD ""
+
+// WDT Timeout (in seconds) - comment out if not required
+#define WDT_TIMEOUT 6
 
 // Comment below to use the device mac address in the topic instead of the name. Ignored
 // if autodiscovery is enabled (will always use the mac address).
@@ -34,10 +37,15 @@
 // maximum. For more devices, you should have multiple ESP32's, ensure they have
 // a different MQTT_TOPIC_PREFIX, and use the DEVICE_ALLOWLIST to control up
 // to 3 am43's per ESP.
-//
+
+#define SHADE_1 "11:22:33:44:55:66"
+#define SHADE_2 "11:22:33:44:55:66"
+#define SHADE_3 "11:22:33:44:55:66"
+
 #define DEVICE_ALLOWLIST ""
-//#define DEVICE_ALLOWLIST "11:22:33:44:55:66"
-//#define DEVICE_ALLOWLIST "11:22:33:44:55:66,AA:BB:CC:DD:EE:FF"
+//#define DEVICE_ALLOWLIST SHADE_1
+//#define DEVICE_ALLOWLIST SHADE_1 "," SHADE_2 "," SHADE_3
+
 
 // Comment out below to disable the OTA feature, especially if you have
 // stability problems.
