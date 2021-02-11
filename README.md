@@ -60,12 +60,27 @@ In the file tab *config.h*, configure your Wifi credentials and your MQTT server
 details. If your AM43 devices are not using the default pin (8888) also set it
 there.
 
+### Installation with NimBLE
+
+As of Version 0.5.0, you can choose to use the [NimBLE bluetooth stack](https://github.com/h2zero/NimBLE-Arduino/),
+rather than the legacy Arduino stack. This is signficantly smaller in both flash and
+RAM usage, so should increase stability. You can download the NimBLE library directly
+within the Arduino Library Manager (*Sketch->Include Library->Manage Libraries*).
+
+To have the AM43 library use NimBLE, edit the file *AM43Client.h* in your
+installation and uncomment the line ```#define USE_NIMBLE``` near the top.
+
+### Legacy (non-NimBLE only) installation requirements
+
+It's recommended to use the NimBLE library, but if you are having issues with
+this, you can use the legacy stack (please also raise a bug).
+
 The sketch takes up a lot of space on flash thanks to the use of Wifi and BLE - you
 will need to increase the available space by changing the board options in the
 Arduino IDE. Once you have selected your ESP32 board in *Tools*, select 
 *Tools -> Partition Scheme -> Minimal SPIFFS* to enable the larger program space.
 
-### Patch BLE library
+#### Patch BLE library
 
 Whilst developing this, I found bugs in the ESP32 Arduino BLE libraries
 which cause significant instability issues. A patch will been submitted to
@@ -283,4 +298,4 @@ switch:
 
 ## Copyright
 
-Copyright 2020, Ben Buxton. Licenced under the MIT licence, see LICENSE.
+Copyright 2020-2021, Ben Buxton. Licenced under the MIT licence, see LICENSE.

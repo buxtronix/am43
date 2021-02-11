@@ -1,10 +1,13 @@
 #include <Arduino.h>
 #include "AM43Client.h"
+#ifdef USE_NIMBLE
+#include "NimBLEDevice.h"
+#else
 #include "BLEDevice.h"
+#endif
 
 BLEUUID serviceUUID(AM43_SERVICE_UUID);
 BLEUUID    charUUID(AM43_CHAR_UUID);
-
 
 uint8_t startPacket[5] = {0x00, 0xff, 0x00, 0x00, 0x9a};
 std::vector<uint8_t> startPkt(startPacket, startPacket + sizeof(startPacket)/sizeof(startPacket[0]));
@@ -230,7 +233,7 @@ void AM43Client::sendCommand(uint8_t command, std::vector<uint8_t> data) {
       Serial.print(sendData[i], HEX);
     }
   Serial.println();
-  m_Char->writeValue(&sendData[0], sendData.size());
+  m_Char->writeValue(&sendData[0], sendData.size(), false);
 }
 
 boolean AM43Client::connectToServer(notify_callback callback) {
@@ -244,7 +247,11 @@ boolean AM43Client::connectToServer(notify_callback callback) {
   this->m_Connected = false;
   // Connect to the remote BLE Server.
   Serial.print("...");
-  if (this->m_Client->connect(this->m_Device)) {   // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
+#ifdef USE_NIMBLE
+  if (this->m_Client->connect(this->m_Device, false)) {
+#else
+  if (this->m_Client->connect(this->m_Device)) {
+#endif
     Serial.println(" - Connected to server");
   } else {
     Serial.println(" - Failed to connect.");
@@ -252,9 +259,13 @@ boolean AM43Client::connectToServer(notify_callback callback) {
     this->m_Connected = false;
     return false;
   }
+#ifdef USE_NIMBLE
+	this->m_Client->discoverAttributes();
+#endif
+    
 
   // Obtain a reference to the service we are after in the remote BLE server.
-  BLERemoteService* pRemoteService = m_Client->getService(serviceUUID);
+  BLERemoteService* pRemoteService = m_Client->getService(AM43_SERVICE_UUID);
   if (pRemoteService == nullptr) {
     Serial.print("Failed to find our service UUID: ");
     Serial.println(serviceUUID.toString().c_str());
@@ -263,14 +274,14 @@ boolean AM43Client::connectToServer(notify_callback callback) {
   }
 
   // Obtain a reference to the characteristic in the service of the remote BLE server.
-  m_Char = pRemoteService->getCharacteristic(charUUID);
+  m_Char = pRemoteService->getCharacteristic(AM43_CHAR_UUID);
   if (m_Char == nullptr) {
     Serial.print("Failed to find our characteristic UUID: ");
     Serial.println(charUUID.toString().c_str());
     this->m_Client->disconnect();
     return false;
   }
-    
+
   if(this->m_Char->canNotify())
     this->m_Char->registerForNotify(callback);
 

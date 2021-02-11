@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.5.0] - 2021-02-11
+ - Support NimBLE Bluetooth stack, possibly more stable.
+
 ## [0.4.0] - 2020-08-17
  - MQTT example adds new switch to enable/disable BLE connections.
 

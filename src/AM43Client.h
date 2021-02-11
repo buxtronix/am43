@@ -1,7 +1,14 @@
 #ifndef AM43CLIENT_H_
 #define AM43CLIENT_H_
 
+// Uncomment to use the NimBLE stack instead.
+#define USE_NIMBLE
+
+#ifdef USE_NIMBLE
+#include "NimBLEDevice.h"
+#else
 #include "BLEDevice.h"
+#endif
 
 #define AM43_SERVICE_UUID "0000fe50-0000-1000-8000-00805f9b34fb"
 #define AM43_CHAR_UUID "0000fe51-0000-1000-8000-00805f9b34fb"

@@ -34,7 +34,11 @@
 
 #include <PubSubClient.h>
 #include <AM43Client.h>
+#ifdef USE_NIMBLE
+#include <NimBLEDevice.h>
+#else
 #include <BLEDevice.h>
+#endif
 
 #ifdef WDT_TIMEOUT
 #include <esp_task_wdt.h>
@@ -49,7 +53,11 @@ const uint16_t am43Pin = AM43_PIN;
 WiFiClient espClient;
 PubSubClient pubSubClient(espClient);
 
+#ifdef USE_NIMBLE
+struct ble_npl_sem clientListSemaphore;
+#else
 FreeRTOS::Semaphore clientListSem = FreeRTOS::Semaphore("clients");
+#endif
 
 void mqtt_callback(char* top, byte* pay, unsigned int length);
 
@@ -188,10 +196,18 @@ std::map<std::string, MyAM43Callbacks*> allClients;
 
 std::map<std::string, MyAM43Callbacks*> getClients() {
   std::map<std::string, MyAM43Callbacks*> cls;
+#ifdef USE_NIMBLE
+  ble_npl_sem_pend(&clientListSemaphore, BLE_NPL_TIME_FOREVER);
+#else
   clientListSem.take("clientsAll");
+#endif
   for (auto const& c : allClients)
     cls.insert({c.first, c.second});
+#ifdef USE_NIMBLE
+  ble_npl_sem_release(&clientListSemaphore);
+#else
   clientListSem.give();
+#endif
   return cls;
 }
 
@@ -293,41 +309,59 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
  /**
    * Called for each advertising BLE server.
    */
-  void onResult(BLEAdvertisedDevice advertisedDevice) {
-    if (advertisedDevice.getName().length() > 0)
-        Serial.printf("BLE Advertised Device found: %s\r\n", advertisedDevice.toString().c_str());
+   #ifdef USE_NIMBLE
+  void onResult(BLEAdvertisedDevice *advertisedDevice) {
+  #else
+  void onResult(BLEAdvertisedDevice advDevice) {
+    BLEAdvertisedDevice *advertisedDevice = &advDevice;
+  #endif
+    if (advertisedDevice->getName().length() > 0)
+        Serial.printf("BLE Advertised Device found: %s\r\n", advertisedDevice->toString().c_str());
 
     // We have found a device, let us now see if it contains the service we are looking for.
-    if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID)) {
+    if (advertisedDevice->haveServiceUUID() && advertisedDevice->isAdvertisingService(serviceUUID)) {
       if (!bleEnabled) {
         Serial.printf("BLE connections disabled, ignoring device\r\n");
         return;
       }
       auto cls = getClients();
       for (auto const& c : cls) {
-        if (!c.first.compare(advertisedDevice.toString())) {
-          Serial.printf("Ignoring advertising device %s, already present\r\n", advertisedDevice.toString().c_str());
+        if (!c.first.compare(advertisedDevice->toString())) {
+          Serial.printf("Ignoring advertising device %s, already present\r\n", advertisedDevice->toString().c_str());
           return;
         }
       }
-      if (!isAllowed(advertisedDevice.getAddress())) {
-        Serial.printf("Ignoring device %s, not in allow list\r\n", advertisedDevice.toString().c_str());
+      if (!isAllowed(advertisedDevice->getAddress())) {
+        Serial.printf("Ignoring device %s, not in allow list\r\n", advertisedDevice->toString().c_str());
         return;
       }
       if (cls.size() >= BLE_MAX_CONN) {
         Serial.printf("ERROR: Already connected to %d devices, Arduino cannot connect to any more.\r\n", cls.size());
         return;
       }
-      AM43Client* newClient = new AM43Client(new BLEAdvertisedDevice(advertisedDevice), am43Pin);
+#ifdef USE_NIMBLE
+      //AM43Client* newClient = new AM43Client(advertisedDevice, am43Pin);
+      AM43Client* newClient = new AM43Client(new BLEAdvertisedDevice(*advertisedDevice), am43Pin);
+#else
+      AM43Client* newClient = new AM43Client(new BLEAdvertisedDevice(advDevice), am43Pin);
+#endif
       newClient->m_DoConnect = true;
-      newClient->m_Name = advertisedDevice.getName();
+      newClient->m_Name = advertisedDevice->getName();
       MyAM43Callbacks *cbs = new MyAM43Callbacks();
       cbs->client = newClient;
       cbs->lastBatteryMessage = 0;
       newClient->setClientCallbacks(cbs);
+#ifdef USE_NIMBLE
+      ble_npl_sem_pend(&clientListSemaphore, BLE_NPL_TIME_FOREVER);
+#else
       clientListSem.take("clientInsert");
-      allClients.insert({advertisedDevice.toString(), cbs});
+#endif
+      allClients.insert({advertisedDevice->toString(), cbs});
+#ifdef USE_NIMBLE
+      ble_npl_sem_release(&clientListSemaphore);
+#else
       clientListSem.give();
+#endif
       //pBLEScan->stop();
       //scanning = false;
     } // Found our server
@@ -423,11 +457,19 @@ bool otaUpdating = false;
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting Arduino BLE Client application...");
+#ifdef USE_NIMBLE
+  Serial.println("Using NimBLE stack.");
+#else
+  Serial.println("Using legacy stack.");
+#endif
   setup_wifi();
   pubSubClient.setServer(mqtt_server, 1883);
   pubSubClient.setCallback(mqtt_callback);
 
   parseAllowList();
+#ifdef USE_NIMBLE
+  ble_npl_sem_init(&clientListSemaphore, 1);
+#endif
   
 #ifdef ENABLE_ARDUINO_OTA
   ArduinoOTA
@@ -503,12 +545,20 @@ void loop() {
       if (c.second->client->m_Disconnected) removeList.push_back(c.first);
     }
     // Remove any clients that have been disconnected.
+#ifdef USE_NIMBLE
+    ble_npl_sem_pend(&clientListSemaphore, BLE_NPL_TIME_FOREVER);
+#else
+    clientListSem.take("clientRemove");
+#endif
     for (auto i : removeList) {
-      clientListSem.take("clientRemove");
       delete allClients[i];
       allClients.erase(i);
-      clientListSem.give();
     }
+#ifdef USE_NIMBLE
+    ble_npl_sem_release(&clientListSemaphore);
+#else
+   clientListSem.give();
+#endif
 
     lastAM43update = millis();
   }
@@ -517,6 +567,7 @@ void loop() {
     scanning = true;
     pBLEScan->start(10, bleScanComplete, false);
     lastScan = millis();
+    Serial.printf("Up for %ds\r\n", millis()/1000);
   }
 
 #ifdef ENABLE_ARDUINO_OTA
