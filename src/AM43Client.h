@@ -1,7 +1,7 @@
 #ifndef AM43CLIENT_H_
 #define AM43CLIENT_H_
 
-// Uncomment to use the NimBLE stack instead.
+// Comment out to use the legacy BLE stack instead.
 #define USE_NIMBLE
 
 #ifdef USE_NIMBLE

@@ -62,18 +62,18 @@ there.
 
 ### Installation with NimBLE
 
-As of Version 0.5.0, you can choose to use the [NimBLE bluetooth stack](https://github.com/h2zero/NimBLE-Arduino/),
+As of Version 0.5.0, the library uses the [NimBLE bluetooth stack](https://github.com/h2zero/NimBLE-Arduino/),
 rather than the legacy Arduino stack. This is signficantly smaller in both flash and
 RAM usage, so should increase stability. You can download the NimBLE library directly
 within the Arduino Library Manager (*Sketch->Include Library->Manage Libraries*).
-
-To have the AM43 library use NimBLE, edit the file *AM43Client.h* in your
-installation and uncomment the line ```#define USE_NIMBLE``` near the top.
 
 ### Legacy (non-NimBLE only) installation requirements
 
 It's recommended to use the NimBLE library, but if you are having issues with
 this, you can use the legacy stack (please also raise a bug).
+
+To have the AM43 library use the legacy BLE stack, edit the file *AM43Client.h* in your
+installation and comment out the line ```#define USE_NIMBLE``` near the top.
 
 The sketch takes up a lot of space on flash thanks to the use of Wifi and BLE - you
 will need to increase the available space by changing the board options in the
