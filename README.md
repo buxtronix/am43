@@ -289,6 +289,26 @@ switch:
 
 ```
 
+### Building with [PlatformIO](https://platformio.org/)
+
+Building with PlatformIO is simple, it will manage dependencies automatically.
+
+#### To build with PlatformIO
+
+1. Copy examples/MQTTBlinds/MQTTBlinds.ino and config.h to the src/ directory.
+
+2. Edit `config.h`
+
+3. Compile and upload via USB
+```
+pio run -t upload
+```
+
+4. Optionally monitor the serial port
+```
+pio run -t monitor
+```
+
 ## TODO
 
  - Consider more functionality such as device configuration.
