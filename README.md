@@ -11,6 +11,8 @@ Zemismart, A-OK and all use the "Blind Engine" app.
 
 Feel free to send PRs.
 
+Looking for native ESPHome support? [See this repo](https://github.com/buxtronix/esphome-am43)
+
 ## MQTTBlinds example overview
  
 This sketch will scan for and auto-connect to any AM43 devices in range, then provide
@@ -204,7 +206,15 @@ list as above.
 
 ## Home Assistant configuration
 
-### With auto-discovery
+### Native with ESPHome
+
+There is now a repo which allows you to integrate AM43 support directly
+into ESPHome without downloading or installing anything beyond your standard
+ESPHome installation.
+
+See [https://github.com/buxtronix/esphome-am43](https://github.com/buxtronix/esphome-am43)
+
+### HA with auto-discovery
 
 Ref: [Home Assistant Auto Discovery](https://www.home-assistant.io/docs/mqtt/discovery/)
 
@@ -314,7 +324,6 @@ pio run -t monitor
  - Consider more functionality such as device configuration.
  - Allow buttons on the ESP32 for control?
  - On-demand BLE connect to save AM43 device battery.
- - Port this to native ESPHome
 
 ## Copyright
 
