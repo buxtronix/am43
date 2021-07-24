@@ -6,6 +6,7 @@
 
 // MQTT server details.
 #define MQTT_ADDRESS "x.x.x.x"
+#define MQTT_PORT 1883
 #define MQTT_USERNAME ""
 #define MQTT_PASSWORD ""
 

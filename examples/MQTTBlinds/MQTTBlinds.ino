@@ -48,6 +48,7 @@
 const char *ssid = WIFI_SSID;
 const char *password = WIFI_PASSWORD;
 const char *mqtt_server = MQTT_ADDRESS;
+const uint16_t mqtt_server_port = MQTT_PORT;
 const uint16_t am43Pin = AM43_PIN;
 
 WiFiClient espClient;
@@ -128,7 +129,7 @@ class MyAM43Callbacks: public AM43Callbacks {
     void onConnect(AM43Client *c) {
       this->mqtt = new PubSubClient(this->wifiClient);
       this->nextMqttAttempt = 0;
-      this->mqtt->setServer(mqtt_server, 1883);
+      this->mqtt->setServer(mqtt_server, mqtt_server_port);
       this->mqtt->setCallback(mqtt_callback);
       this->mqtt->setBufferSize(512);
       this->rmtAddress = String(c->m_Device->getAddress().toString().c_str());
@@ -463,7 +464,7 @@ void setup() {
   Serial.println("Using legacy stack.");
 #endif
   setup_wifi();
-  pubSubClient.setServer(mqtt_server, 1883);
+  pubSubClient.setServer(mqtt_server, mqtt_server_port);
   pubSubClient.setCallback(mqtt_callback);
 
   parseAllowList();
