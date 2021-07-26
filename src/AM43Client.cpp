@@ -25,6 +25,7 @@ AM43Client::AM43Client(BLEAdvertisedDevice *d, uint16_t pin) {
   this->m_BatteryPercent = 0xff;
   this->m_ClientCallbacks = nullptr;
   this->m_CurrentQuery = 1;
+  this->m_CommandQueued = false;
 }
 
 void AM43Client::onConnect(BLEClient* pclient) {
@@ -190,6 +191,10 @@ void AM43Client::close() {
 void AM43Client::setPosition(uint8_t pos) {
   std::vector<uint8_t> data{pos};
   this->sendCommand(AM43_COMMAND_SET_POSITION, data);
+}
+
+void AM43Client::setCommandQueued(boolean status) {
+  this->m_CommandQueued = status;
 }
 
 void AM43Client::update() {

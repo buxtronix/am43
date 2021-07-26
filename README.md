@@ -41,8 +41,10 @@ The following MQTT topics are subscribed to:
 | ----- | ----------- | ------ |
 | am43/&lt;device>/set          | Set the blind position | 'OPEN', 'STOP' or 'CLOSE' |
 | am43/&lt;device>/set_position | Set the blind % position | between 0 and 100. |
+| am43/&lt;device>/status | Get device status on demand (position/light/battery) | Ignored. |
 | am43/enable               | Enable or disable BLE connections | 'off' or 'on'.
 | am43/restart               | Reboot this service | Ignored.
+| am43/cmnd/#                | Only on bleOnDemand mode.  This topic process commands with on demand connections. ex. am43/cmnd/&lt;device>/set ; am32/cmnd/&lt;device>/set_position  | Depends on every command
 
 &lt;device> is the bluetooth mac address of the device, eg 02:69:32:f0:c5:1d
 
@@ -61,6 +63,11 @@ Open the example Sketch under *File -> Examples -> AM43Client -> MQTTBlinds*
 In the file tab *config.h*, configure your Wifi credentials and your MQTT server
 details. If your AM43 devices are not using the default pin (8888) also set it
 there.
+
+### Components needed
+
+- ESP-32  --> v1.0.6 (https://github.com/espressif/arduino-esp32)
+- NimBLE-Arduino --> v1.2.0 (https://github.com/h2zero/NimBLE-Arduino)
 
 ### Installation with NimBLE
 
@@ -154,7 +161,7 @@ Once you have your device ready, you can monitor and control it using an MQTT
 client. For example, using mosquitto_sub, you can watch activity with:
 
 ```
-$ mosquitto_sub -h <mqtt_server> -v -t am43/#
+$ mosquitto_sub -h <mqtt_server> -p <mqtt_port> -v -t am43/#
 am43/LWT Online
 am43/026932f2c41d/available online
 am43/026932f2c41d/position 0
@@ -169,13 +176,13 @@ am43/024d45f05b2e/light 68
 It's trivial to then control the shades similarly:
 
 ```
-$ mosquitto_sub -h <mqtt_server> -t am43/026932f2c41d/set -m OPEN
+$ mosquitto_pub -h <mqtt_server> -p <mqtt_port> -t am43/026932f2c41d/set -m OPEN
 ```
 
 You can also control all in unison:
 
 ```
-$ mosquitto_sub -h <mqtt_server> -t am43/all/set -m CLOSE
+$ mosquitto_pub -h <mqtt_server> -p <mqtt_port> -t am43/all/set -m CLOSE
 ```
 
 ## Multiple devices
@@ -323,7 +330,7 @@ pio run -t monitor
 
  - Consider more functionality such as device configuration.
  - Allow buttons on the ESP32 for control?
- - On-demand BLE connect to save AM43 device battery.
+ - <s>On-demand BLE connect to save AM43 device battery.</s>
 
 ## Copyright
 
