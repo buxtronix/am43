@@ -54,7 +54,7 @@ class AM43Client : public BLEClientCallbacks {
     // We're logged in (correct pin)
     boolean m_LoggedIn;
     // OnDemand command flag
-    bollean m_CommandQueued;
+    boolean m_CommandQueued;
 
     // Latest battery level (percent)
     unsigned char m_BatteryPercent;
