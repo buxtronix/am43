@@ -69,6 +69,18 @@ there.
 - ESP-32  --> v1.0.6 (https://github.com/espressif/arduino-esp32)
 - NimBLE-Arduino --> v1.2.0 (https://github.com/h2zero/NimBLE-Arduino)
 
+### OnDemand Mode
+
+This mode works with on demand connections to AM43 devices, so when receives a command, 
+it's start on demand connection to device, send the command requested and wait 60 seconds 
+before disconnect from devices.
+
+To enable this mode, edit the config.h file and uncomment the line ``#define AM43_ONDEMAND``
+
+Is strongly recommended, to reduce the update interval from 5000 to 20000, to have enough 
+time to get all devices updates (battery/light/position).  To change this, edit the 
+AM43Client.h file and modify line from ``#define AM43_UPDATE_INTERVAL 30000`` to ``#define AM43_UPDATE_INTERVAL 5000``.
+
 ### Installation with NimBLE
 
 As of Version 0.5.0, the library uses the [NimBLE bluetooth stack](https://github.com/h2zero/NimBLE-Arduino/),
