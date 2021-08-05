@@ -64,7 +64,21 @@ void mqtt_callback(char* top, byte* pay, unsigned int length);
 
 unsigned long lastScan = 0;
 boolean scanning = false;
+
+#ifdef AM43_ONDEMAND
+boolean bleEnabled = false; // Controlled via MQTT.
+boolean bleOnDemand = true;
+#else
 boolean bleEnabled = true; // Controlled via MQTT.
+boolean bleOnDemand = false;
+#endif
+
+const uint16_t bleOnDemandTimeout = 60000;
+unsigned long onDemandTime = millis();
+boolean bleOnDemandCommandQueued = false;
+String bleOnDemandAddress;
+String bleOnDemandCommand;
+String bleOnDemandCommandValue;
 BLEScan* pBLEScan;
 
 const char discTopicTmpl[] PROGMEM = "homeassistant/cover/%s/config";
@@ -172,6 +186,7 @@ class MyAM43Callbacks: public AM43Callbacks {
       this->mqtt->publish(topic("available").c_str(), "online", true);
       this->mqtt->subscribe(topic("set").c_str());
       this->mqtt->subscribe(topic("set_position").c_str());
+      this->mqtt->subscribe(topic("status").c_str());
 
 #ifdef AM43_ENABLE_MQTT_DISCOVERY
       char discTopic[128];
@@ -235,6 +250,12 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
   i2 = topic.indexOf('/', i1+1);
   String address = topic.substring(i1+1, i2);
   String command = topic.substring(i2+1);
+  if (address == "cmnd") {
+    i3 = topic.indexOf('/', i2+1);
+    address = topic.substring(i2+1, i3);
+    command = topic.substring(i3+1);
+  }
+  boolean commandOnDemand = false;
   Serial.printf("Addr: %s Cmd: %s\r\n", address.c_str(), command.c_str());
   payload.toLowerCase();
 
@@ -251,6 +272,9 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
       Serial.println("Disabling BLE Clients");
       bleEnabled = false;
       pubSubClient.publish(topPrefix("/enabled").c_str(), "OFF", true);
+#ifdef AM43_ONDEMAND
+      bleOnDemand = true;
+#endif
       for (auto const& c : cls) {
         c.second->client->disconnectFromServer();
       }
@@ -259,6 +283,9 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
       bleEnabled = true;
       pubSubClient.publish(topPrefix("/enabled").c_str(), "ON", true);
       lastScan = 0;
+#ifdef AM43_ONDEMAND
+      bleOnDemand = false;
+#endif
     }
   }
 
@@ -272,8 +299,34 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
       }
       if (command == "set_position")
         cl->setPosition(payload.toInt());
+      if (command == "status") {
+        cl->sendGetBatteryRequest();
+        cl->sendGetPositionRequest();
+        cl->sendGetLightRequest();
+      }
     }
   }
+
+  if (command == "status" || command == "set" || command == "set_position" || command == "status") commandOnDemand = true;
+  
+  if (commandOnDemand && bleOnDemand && millis() - onDemandTime > bleOnDemandTimeout) {
+    onDemandTime = millis();
+    onDemand_BLEScan();
+    if (command != "status") {
+      bleOnDemandCommandQueued = true;
+      bleOnDemandAddress = address;
+      bleOnDemandCommand = command;
+      bleOnDemandCommandValue = payload;
+    }
+  }
+
+}
+
+void onDemand_BLEScan() {
+  Serial.println("Starting an OnDemand BLE Scan...");
+  scanning = true;
+  lastScan = 0;
+  pBLEScan->start(3, bleScanComplete, false);
 }
 
 std::vector<BLEAddress> allowList;
@@ -321,7 +374,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
     // We have found a device, let us now see if it contains the service we are looking for.
     if (advertisedDevice->haveServiceUUID() && advertisedDevice->isAdvertisingService(serviceUUID)) {
-      if (!bleEnabled) {
+      if (!bleEnabled && !bleOnDemand) {
         Serial.printf("BLE connections disabled, ignoring device\r\n");
         return;
       }
@@ -434,6 +487,8 @@ void reconnect_mqtt() {
       pubSubClient.subscribe(topPrefix("/enable").c_str());
       pubSubClient.subscribe(topPrefix("/all/set").c_str());
       pubSubClient.subscribe(topPrefix("/all/set_position").c_str());
+      pubSubClient.subscribe(topPrefix("/all/status").c_str());
+      if (bleOnDemand) pubSubClient.subscribe(topPrefix("/cmnd/#").c_str());
       pubSubClient.loop();
 
       char discTopic[128];
@@ -442,7 +497,9 @@ void reconnect_mqtt() {
       sprintf(discTopic, discSwitchTopic, MQTT_TOPIC_PREFIX);
       sprintf(discPayload, discSwitchPayload, MQTT_TOPIC_PREFIX, MQTT_TOPIC_PREFIX, MQTT_TOPIC_PREFIX);
       pubSubClient.publish(discTopic, discPayload, true);
-      pubSubClient.publish(topPrefix("/enabled").c_str(), "ON", true);
+      String msgEnabled = "ON";
+      if (!bleEnabled) msgEnabled = "OFF";
+      pubSubClient.publish(topPrefix("/enabled").c_str(), msgEnabled.c_str(), true);
     } else {
       Serial.print("failed, rc=");
       Serial.print(pubSubClient.state());
@@ -537,11 +594,25 @@ void loop() {
     for (auto const &c : cls) {
       if (c.second->client->m_DoConnect && !scanning) {
         c.second->client->connectToServer(notifyCallback);
+        if (bleOnDemandCommandQueued) c.second->client->setCommandQueued(true);
         break;  // Connect takes some time, so break out to allow other processing.
       }
       if (c.second->client->m_Connected) {
         c.second->client->update();
         c.second->handle();
+        if (c.second->client->m_CommandQueued && (bleOnDemandAddress == "all" || bleOnDemandAddress == c.second->mqttName)) {
+          c.second->client->setCommandQueued(false);
+          if (bleOnDemandCommand == "set") {
+            if (bleOnDemandCommandValue == "open") c.second->client->open();
+            if (bleOnDemandCommandValue == "close") c.second->client->close();
+            if (bleOnDemandCommandValue == "stop") c.second->client->stop();
+          }
+          if (bleOnDemandCommand == "set_position") c.second->client->setPosition(bleOnDemandCommandValue.toInt());
+        }
+        if (bleOnDemand && millis() - onDemandTime > bleOnDemandTimeout) {
+          bleOnDemandCommandQueued = false;
+          c.second->client->disconnectFromServer();
+        }
       }
       if (c.second->client->m_Disconnected) removeList.push_back(c.first);
     }
@@ -565,8 +636,10 @@ void loop() {
   }
   // Start a new scan every 60s.
   if (millis() - lastScan > 60000 && !otaUpdating && !scanning) {
-    scanning = true;
-    pBLEScan->start(10, bleScanComplete, false);
+    if (bleEnabled) {
+      scanning = true;
+      pBLEScan->start(10, bleScanComplete, false);
+    }
     lastScan = millis();
     Serial.printf("Up for %ds\r\n", millis()/1000);
   }

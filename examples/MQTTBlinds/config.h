@@ -31,6 +31,19 @@
 // PIN for the AM43 device (printed on it, default is 8888)
 #define AM43_PIN 8888
 
+// Enable this to use OnDemand feature :
+// This allows to maintain disconnected from BLE devices and,
+// Receive command from MQTT and connect and send commands to AM43
+// OnDemand.  The devices commands needs to be sent to AM43/cmnd/MAC-ADDRESS/command
+//
+// Note: Commands can have a delay of 5-10s.  
+// Config change recommended! : To improve status updates, 
+// change AM43_UPDATE_INTERVAL to 5000 in AM43Clien.h file
+// ex. #define AM43_UPDATE_INTERVAL 5000
+//
+// To enable, uncomment the next line:
+//#define AM43_ONDEMAND
+
 // Comma separated list of MAC addresses to allow for control. Useful if you
 // have multiple ESP controllers. Leave empty to allow all devices.
 //
