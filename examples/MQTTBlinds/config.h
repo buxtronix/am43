@@ -44,6 +44,11 @@
 // To enable, uncomment the next line:
 //#define AM43_ONDEMAND
 
+// BLE Scan time out for OnDemand Mode.  Default 3 seconds.
+// Increment this value if you have problems when using OnDemand Mode.
+// This represent the amount of seconds of BLE Scan executed in OnDemand Mode. 
+#define AM43_ONDEMAND_SCAN_TIMEOUT 3
+
 // Comma separated list of MAC addresses to allow for control. Useful if you
 // have multiple ESP controllers. Leave empty to allow all devices.
 //
