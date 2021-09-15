@@ -42,7 +42,7 @@ The following MQTT topics are subscribed to:
 | am43/&lt;device>/set          | Set the blind position (would be deprecated in future release) | 'OPEN', 'STOP' or 'CLOSE' |
 | am43/&lt;device>/set_position | Set the blind position or % position | 'OPEN', 'UP', 'STOP', 'CLOSE', 'DOWN' or a number between 0 and 100. |
 | am43/&lt;device>/status | Get device status on demand (position/light/battery) | Ignored. |
-| am43/enable               | Enable = BLE connections AllwaysOn mode, Disable = BLE OnDemand Connections mode | 'off' or 'on'.
+| am43/enable               | Enable = BLE connections AlwaysOn mode, Disable = BLE OnDemand Connections mode | 'off' or 'on'.
 | am43/restart               | Reboot this service | Ignored.
 | am43/cmnd/#                | Only on bleOnDemand mode.  This topic process commands with on demand connections. ex. am43/cmnd/&lt;device>/set ; am43/cmnd/&lt;device>/set_position  | Depends on every command
 
