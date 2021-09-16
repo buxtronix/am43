@@ -39,12 +39,12 @@ The following MQTT topics are subscribed to:
 
 | Topic | Description | Values |
 | ----- | ----------- | ------ |
-| am43/&lt;device>/set          | Set the blind position | 'OPEN', 'STOP' or 'CLOSE' |
-| am43/&lt;device>/set_position | Set the blind % position | between 0 and 100. |
+| am43/&lt;device>/set          | Set the blind position (would be deprecated in future release) | 'OPEN', 'STOP' or 'CLOSE' |
+| am43/&lt;device>/set_position | Set the blind position or % position | 'OPEN', 'UP', 'STOP', 'CLOSE', 'DOWN' or a number between 0 and 100. |
 | am43/&lt;device>/status | Get device status on demand (position/light/battery) | Ignored. |
-| am43/enable               | Enable or disable BLE connections | 'off' or 'on'.
+| am43/enable               | Enable = BLE connections AlwaysOn mode, Disable = BLE OnDemand Connections mode | 'off' or 'on'.
 | am43/restart               | Reboot this service | Ignored.
-| am43/cmnd/#                | Only on bleOnDemand mode.  This topic process commands with on demand connections. ex. am43/cmnd/&lt;device>/set ; am32/cmnd/&lt;device>/set_position  | Depends on every command
+| am43/cmnd/#                | Only on bleOnDemand mode.  This topic process commands with on demand connections. ex. am43/cmnd/&lt;device>/set ; am43/cmnd/&lt;device>/set_position  | Depends on every command
 
 &lt;device> is the bluetooth mac address of the device, eg 02:69:32:f0:c5:1d
 
@@ -318,11 +318,77 @@ switch:
 
 ```
 
-### Building with [PlatformIO](https://platformio.org/)
+## OpenHAB v3 Configuration examples
+
+### Things definition with OnDemand Mode support
+```
+Thing mqtt:topic:RollersController "Rollers Controller" (mqtt:broker:MQTTBroker) @ "am43-esp32-controller" [ availabilityTopic="am43/LWT", payloadNotAvailable="Offline",payloadAvailable="Online"] {
+              Channels:
+                  Type string : reachable "Reachable"             [ stateTopic="am43/LWT", transformationPatternOut="MAP:reachable.map" ]
+                  Type switch : allwaysOn "Allways ON mode" [    
+                      stateTopic="am43/enabled", 
+                      commandTopic="am43/enable",
+                      ON="ON",
+                      OFF="OFF"          
+                  ]
+
+                  Type string : roller1Reachable "roller1 Reachable"      [ stateTopic="am43/<device-mac>/available", transformationPatternOut="MAP:reachable.map"]
+                  Type rollershutter : roller1Control "roller1 Control"   [ 
+                      stateTopic="am43/<device-mac>/position",
+                      commandTopic="am43/cmnd/<device-mac>/set_position",
+                      UP="OPEN",
+                      DOWN="CLOSE",
+                      STOP="STOP"
+                  ]
+                  Type number : roller1Battery "roller1 Battery"          [ stateTopic="am43/<device-mac>/battery"]
+                  Type number : roller1Light "roller1 Light Sensor"       [ stateTopic="am43/<device-mac>/light"]
+
+                  Type string : roller2Reachable "roller2 Reachable"      [ stateTopic="am43/<device-mac>/available", transformationPatternOut="MAP:reachable.map"]
+                  Type rollershutter : roller2Control "roller2 Control"   [ 
+                      stateTopic="am43/<device-mac>/position",
+                      commandTopic="am43/cmnd/<device-mac>/set_position",
+                      UP="OPEN",
+                      DOWN="CLOSE",
+                      STOP="STOP"
+                  ]
+                  Type number : roller2Battery "roller2 Battery"          [ stateTopic="am43/<device-mac>/battery"]
+                  Type number : roller2Light "roller2 Light Sensor"       [ stateTopic="am43/<device-mac>/light"]
+          }
+``` 
+
+### Items definition
+```
+Group Equipment_Rollers "Rollers" <blinds> (Location_Group) ["Blinds"]
+String ControllerState "Controller State : [%s]" <network> (Equipment_Rollers) ["Status"] {channel="mqtt:topic:RollersController:reachable"}
+Switch ControllerBLEMode "AllwaysOn Mode" <switch> (Equipment_Rollers) [ "Switch" ] {channel="mqtt:topic:RollersController:allwaysOn"}
+
+String roller1State "roller1 State : [%s]" <network> (Equipment_Rollers) ["Status"] {channel="mqtt:topic:RollersController:roller1Reachable"}
+Rollershutter roller1Position "roller1 Position [%d %%]" <blinds> (Equipment_Rollers)  [ "Setpoint" ] {channel="mqtt:topic:RollersController:roller1Control"}
+Number roller1Battery "roller1 Battery Level [%d %%]" <battery> (Equipment_Rollers) ["Measurement", "Energy"] {channel="mqtt:topic:RollersController:roller1Battery"}
+Number roller1LightLevel "roller1 Light Level [%d %%]" <sun> (Equipment_Rollers) ["Measurement", "Light"] {channel="mqtt:topic:RollersController:roller1Light"}
+
+String roller2State "roller2 State : [%s]" <network> (Equipment_Rollers) ["Status"] {channel="mqtt:topic:RollersController:roller2Reachable"}
+Rollershutter roller2Position "roller2 Position [%d %%]" <blinds> (Equipment_Rollers)  [ "Setpoint" ] {channel="mqtt:topic:RollersController:roller2Control"}
+Number roller2Battery "roller2 Battery Level [%d %%]" <battery> (Equipment_Rollers) ["Measurement", "Energy"] {channel="mqtt:topic:RollersController:roller2Battery"}
+Number roller2LightLevel "roller2 Light Level [%d %%]" <sun> (Equipment_Rollers) ["Measurement", "Light"] {channel="mqtt:topic:RollersController:roller2Light"}
+
+```
+
+### Transform definition
+
+reachable.map:
+```
+Online=ON
+Offline=OFF
+online=ON
+offline=OFF
+```
+
+## Building with [PlatformIO](https://platformio.org/)
 
 Building with PlatformIO is simple, it will manage dependencies automatically.
 
-#### To build with PlatformIO
+### To build with PlatformIO
 
 1. Copy examples/MQTTBlinds/MQTTBlinds.ino and config.h to the src/ directory.
 

@@ -15,7 +15,7 @@
  * The following MQTT topics are subscribed to:
  *
  * - <prefix>/<device>/set          - Set the blind to 'OPEN', 'STOP' or 'CLOSE'
- * - <prefix>/<device>/set_position - Set the blind position, between 0 and 100.
+ * - <prefix>/<device>/set_position - Set the blind position 'OPEN', 'UP', 'STOP', 'CLOSE', 'DOWN' Or between 0 and 100.
  * - <prefix>/restart               - Reboot this service.
  *
  * <device> is the bluetooth mac address of the device, eg 026932f0c51d
@@ -23,7 +23,7 @@
  * For the position set commands, you can use name 'all' to change all devices.
  * 
  * Arduino OTA update is supported.
- */
+ **/
 
 #include "config.h"
 #ifdef ENABLE_ARDUINO_OTA
@@ -50,6 +50,7 @@ const char *password = WIFI_PASSWORD;
 const char *mqtt_server = MQTT_ADDRESS;
 const uint16_t mqtt_server_port = MQTT_PORT;
 const uint16_t am43Pin = AM43_PIN;
+const uint16_t am43BLEOnDemandScanTimeout = AM43_ONDEMAND_SCAN_TIMEOUT;
 
 WiFiClient espClient;
 PubSubClient pubSubClient(espClient);
@@ -297,8 +298,16 @@ void mqtt_callback(char* top, byte* pay, unsigned int length) {
         if (payload == "close") cl->close();
         if (payload == "stop") cl->stop();
       }
-      if (command == "set_position")
-        cl->setPosition(payload.toInt());
+      if (command == "set_position") {
+        if (payload == "open" || payload == "up") 
+          cl->open();
+        else if (payload == "close" || payload == "down") 
+          cl->close();
+        else if (payload == "stop") 
+          cl->stop();
+        else
+          cl->setPosition(payload.toInt());
+      }
       if (command == "status") {
         cl->sendGetBatteryRequest();
         cl->sendGetPositionRequest();
@@ -326,7 +335,7 @@ void onDemand_BLEScan() {
   Serial.println("Starting an OnDemand BLE Scan...");
   scanning = true;
   lastScan = 0;
-  pBLEScan->start(3, bleScanComplete, false);
+  pBLEScan->start(am43BLEOnDemandScanTimeout, bleScanComplete, false);
 }
 
 std::vector<BLEAddress> allowList;
@@ -607,7 +616,16 @@ void loop() {
             if (bleOnDemandCommandValue == "close") c.second->client->close();
             if (bleOnDemandCommandValue == "stop") c.second->client->stop();
           }
-          if (bleOnDemandCommand == "set_position") c.second->client->setPosition(bleOnDemandCommandValue.toInt());
+          if (bleOnDemandCommand == "set_position") {
+            if (bleOnDemandCommandValue == "open" || bleOnDemandCommandValue == "up") 
+              c.second->client->open();
+            else if (bleOnDemandCommandValue == "close" || bleOnDemandCommandValue == "down") 
+              c.second->client->close();
+            else if (bleOnDemandCommandValue == "stop") 
+              c.second->client->stop();
+            else 
+              c.second->client->setPosition(bleOnDemandCommandValue.toInt());
+          }
         }
         if (bleOnDemand && millis() - onDemandTime > bleOnDemandTimeout) {
           bleOnDemandCommandQueued = false;
